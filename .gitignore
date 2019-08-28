@@ -1,0 +1,7 @@
+node_modules
+*.env
+*.DS_Store
+start.sh
+sslcert/fullchain.pem
+sslcert/how-to.md
+sslcert/privkey.pem
