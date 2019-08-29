@@ -2,16 +2,13 @@ import https from 'https'
 import fs from 'fs'
 import socket from 'socket.io'
 import { ApiPromise, WsProvider } from '@polkadot/api'
-// import { post, secretStore } from 'oo7-substrate'
 import { handleFaucetTransfer, setApi } from './handleFaucetTransfer'
-import { txHandler } from './txHandler'
 
 // Environment variables
 const NODE_URL = process.env.NODE_URL || 'wss://node1.totem.live'
 const FAUCET_PORT = process.env.FAUCET_PORT || 3002
 const FAUCET_CERT_PATH = process.env.FAUCET_CERT_PATH || './sslcert/fullchain.pem'
 const FAUCET_KEY_PATH = process.env.FAUCET_KEY_PATH || './sslcert/privkey.pem'
-
 
 // Setup server to use SSL certificate
 const server = https.createServer({
@@ -40,9 +37,8 @@ io.on('connection', client => {
     client.on('faucet', handleFaucetTransfer)
 })
 
-
-console.log('Connecting to Totem Blockchain Network...')
 async function connect() {
+    console.log('Connecting to Totem Blockchain Network...')
     // connect to node
     const provider = new WsProvider(NODE_URL)
     // Create the API and wait until ready
@@ -63,6 +59,7 @@ async function connect() {
     ])
 
     console.log(`Connected to chain "${chain}" using "${nodeName}" v${nodeVersion}`)
+    // Set @api object for handleFaucetTransfer to use when needed
     setApi(api)
 }
 connect().catch((err) => {

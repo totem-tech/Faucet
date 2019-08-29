@@ -1,8 +1,31 @@
-import { decrypt, encryptionKeypair, signingKeyPair, verifySignature, getKeyPair } from './src/utils/naclHelper'
-import { txHandler } from './txHandler'
+import { decrypt, encryptionKeypair, verifySignature } from './src/utils/naclHelper'
+import { handleTx, handleTxV2 } from './handleTx'
 
-// Queue transactions
 let api;
+export const setApi = polkadotApi => {
+    api = polkadotApi
+    // let previous;
+    // // Listed for faucet wallet balance changes
+    // api.query.balances.freeBalance(walletAddress, current => {
+    //     const change = current.sub(previous || current)
+    //     console.log(`Faucet wallet balance: ${current} | change: ${change}`)
+    //     previous = current
+    // })
+}
+
+let inProgress = false
+const txQueue = new Array()
+const processQueue = ()=> {
+    if (txQueue.length === 0) {
+        inProgress = false
+        return;
+    }
+    if (inProgress) return;
+    inProgress = true
+    console.info('\n\n---Processing next TX---')
+    txQueue.shift()()
+}
+
 let amount, uri, keyData, walletAddress, publicKey, secretKey, serverName, external_publicKey, external_signPublicKey, external_serverName
 // Reads environment variables and generate keys if needed
 const setVariables = () => {
@@ -41,9 +64,9 @@ console.log('Encryption KeyPair: \n' + JSON.stringify({ publicKey, secretKey }, 
 console.log('serverName: ', serverName)
 console.log('external_publicKey: ', external_publicKey)
 console.log('external_serverName: ', external_serverName, '\n')
-export const setApi = polkadotApi => api = polkadotApi
 
 export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
+    console.log('\n\n---New faucet request received---')
     if (typeof callback !== 'function') return;
     if (!api || !api.rpc) return callback('Not connected to node')
     const err = setVariables()
@@ -74,7 +97,20 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     if (faucetRequest.funded) return callback('Request already funded')
     if (!faucetRequest.address) return callback('Invalid address')
 
-    txHandler(api, process.env.uri, faucetRequest.address, amount, getKeyPair(keyData).secretKey32)
-        .catch(err => console.error('txHandler error: ', err) | callback(err))
-    callback()
+    const tx = ()=> handleTxV2(
+        api,
+        process.env.uri,
+        faucetRequest.address,
+        amount,
+        keyData// getKeyPair(keyData).secretKey32
+    )
+    .then(hash => callback(null, hash))
+    .catch(err => console.error('txHandler error: ', err) | callback(err))
+    .finally(() => {
+        inProgress = false
+        processQueue()
+    })
+    txQueue.push(tx)
+    processQueue(tx)
+    console.log('Faucet request added to queue. ', JSON.stringify({address: faucetRequest.address, amount}))
 }
