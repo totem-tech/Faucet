@@ -4,7 +4,7 @@
   "description": "Totem Faucet",
   "main": "index.js",
   "scripts": {
-    "faucet": "nodemon --watch faucet/  --verbose --exec ./node_modules/.bin/babel-node ./index.js --ext jsx,js --presets env"
+    "faucet": "nodemon --watch faucet/  --verbose --exec ./node_modules/.bin/babel-node ./index.js --ext js --presets env"
   },
   "babel": {
     "presets": [
