@@ -2,16 +2,7 @@ import { decrypt, encryptionKeypair, verifySignature } from './src/utils/naclHel
 import { handleTx, handleTxV2 } from './handleTx'
 
 let api;
-export const setApi = polkadotApi => {
-    api = polkadotApi
-    // let previous;
-    // // Listed for faucet wallet balance changes
-    // api.query.balances.freeBalance(walletAddress, current => {
-    //     const change = current.sub(previous || current)
-    //     console.log(`Faucet wallet balance: ${current} | change: ${change}`)
-    //     previous = current
-    // })
-}
+export const setApi = polkadotApi => api = polkadotApi
 
 let inProgress = false
 const txQueue = new Array()
@@ -26,7 +17,7 @@ const processQueue = ()=> {
     txQueue.shift()()
 }
 
-let amount, uri, keyData, walletAddress, publicKey, secretKey, serverName, external_publicKey, external_signPublicKey, external_serverName
+let amount, uri, keyData, walletAddress, publicKey, secretKey, serverName, external_publicKey, external_signPublicKey, external_serverName, printSensitiveData
 // Reads environment variables and generate keys if needed
 const setVariables = () => {
     amount = eval(process.env.amount) || 100000
@@ -54,16 +45,20 @@ const setVariables = () => {
     walletAddress = keyPair.walletAddress
     publicKey = keyPair.publicKey
     secretKey = keyPair.secretKey
+
+    // only print sensitive data if "printSensitiveData" environment variable is set to "YES" (case-sensitive)
+    printSensitiveData = process.env.printSensitiveData === "YES"
+    if (!printSensitiveData) return
+    console.log('keyData: ', keyData)
+    console.log('walletAddress: ', walletAddress)
+    console.log('Encryption KeyPair: \n' + JSON.stringify({ publicKey, secretKey }, null, 4))
+    console.log('serverName: ', serverName)
+    console.log('external_publicKey: ', external_publicKey)
+    console.log('external_serverName: ', external_serverName, '\n')
 }
 // Set variables on start
 const err = setVariables()
 if (err) throw new Error(err)
-console.log('keyData: ', keyData)
-console.log('walletAddress: ', walletAddress)
-console.log('Encryption KeyPair: \n' + JSON.stringify({ publicKey, secretKey }, null, 4))
-console.log('serverName: ', serverName)
-console.log('external_publicKey: ', external_publicKey)
-console.log('external_serverName: ', external_serverName, '\n')
 
 export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     console.log('\n\n---New faucet request received---')
@@ -77,7 +72,7 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
         external_publicKey,
         secretKey
     )
-    console.log('\ndecrypted', decrypted)
+    printSensitiveData && console.log('\ndecrypted', decrypted)
     if (!decrypted) return callback('Decryption failed')
 
     const minLength = 9
@@ -87,8 +82,8 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     const msgServerName = decryptedArr.slice(minLength, dataStart).join('')
     if (serverName !== msgServerName) return callback('Invalid data', msgServerName, serverName)
     const signature = decryptedArr.slice(sigStart).join('')
-    console.log('\nSignature:\n', signature)
-    console.log('\nexternal_signPublicKey:\n', external_signPublicKey)
+    printSensitiveData && console.log('\nSignature:\n', signature)
+    printSensitiveData && console.log('\nexternal_signPublicKey:\n', external_signPublicKey)
     const data = decryptedArr.slice(dataStart, sigStart).join('')
     console.log('\nData:\n', data)
     if (!verifySignature(data, signature, external_signPublicKey)) return callback('Signature verification failed')
