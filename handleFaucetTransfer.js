@@ -37,9 +37,10 @@ const err = setVariables()
 if (err) throw new Error(err)
 console.log('keyData: ', keyData)
 console.log('walletAddress: ', walletAddress)
-console.log('Encryption KeyPair: \n' + JSON.stringify({ publicKey, secretKey }, null, 4))
+// TODO The following should not display the secret key.
+console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify({ publicKey, secretKey }, null, 4))
 console.log('serverName: ', serverName)
-console.log('external_publicKey: ', external_publicKey)
+console.log('external_publicKey base64 encoded: ', external_publicKey)
 console.log('external_serverName: ', external_serverName, '\n')
 export const setApi = polkadotApi => api = polkadotApi
 
