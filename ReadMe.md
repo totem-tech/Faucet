@@ -21,6 +21,7 @@ The variables have the following format:
 
 | Description | Environmental variable name (uppercase = restart required, upon change of value) | Envirnmental variable type encoding | Faucet Server | Value Faucet Server|
 |---|---|---|---|---|
+| Print keys to console converts true false | printSensitiveData | string | x | YES |
 | Amount of funds to be transferred in the smallest unit | amount | int| x | 10000|
 | Chat server public encryption key| external_publicKey | 32Bytes base64 encoded | x | FfqAbYJ3EGdw1V+kZnyORTHC6hwvKLpIRkbbQJWuFkU= |
 | Chat server name | external_serverName| string | x | bob|
@@ -36,7 +37,7 @@ The variables have the following format:
 
 It is up to you how hyou manage setting up the environmental variables (recommended is using `npm dotenv` and `.env`) however for testing you may do the following :
 
-```
+```shell
 
 $ git clone https://gitlab.com/totem-tech/faucet.git
 
@@ -48,8 +49,9 @@ $ touch start.sh
 
 Then add something like the following code to `start.sh` using your favourite text editor (or you can just type "open -e .start.sh" to open it in TextEdit) and save:
 
-```
+```bash
 
+printSensitiveData="YES" \
 amount="100000" \
 uri="//Alice" \
 keyData="98319d4ff8a9508c4bb0cf0b5a78d760a0b2082c02775e6e82370816fedfff48925a225d97aa00682d6a59b95b18780c10d7032336e88f3442b42361f4a66011d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" \
@@ -72,4 +74,3 @@ Now you can start the faucet server issuing:
 
 ## Medium Term
 The medium-term plan is that this development will be enhanced to distribute funds following a payment of cryptocurency by monitoring other blockchains for incoming payments to deterministic addresses communicated to the requesting client via the chat service, and could integrate other client specific requests.
-
