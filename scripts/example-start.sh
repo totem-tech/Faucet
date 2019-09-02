@@ -5,7 +5,7 @@
 
 
 
- _______________DYNAMIC_VARIABLES_BELOW_______________="Changes to variables below DO NOT REQUIRE server restart" \
+# _______________DYNAMIC_VARIABLES_BELOW_______________="Changes to variables below DO NOT REQUIRE server restart" \
 # amount="int: amount of funds to transfer. Default: 100000" \
 # uri="string: funding wallet URI" \
 # keyData="string: (96 bytes hex without 0x) exactly as found in the oo7-substrate's secretStore" \
@@ -13,6 +13,7 @@
 # external_publicKey="string-base64-encoded: 32 byte public encryption key from the UI/Chat server" \
 # external_serverName="string: UI/Chat server's name" \
 # external_signPublicKey="string-base64-encoded: 32 byte public signing key from the UI/Chat server" \
+# printSensitiveData="string: enable or disable printing of keypair and other sensitive data. To Enable set value to 'YES' (case-sensitive)" \
 # _______________STATIC_VARIABLES_BELOW_______________="Changes to below variables DO REQUIRE server restart" \
 # FAUCET_PORT="int: port number" \
 # FAUCET_CERT_PATH="string: ./path/to/ssl/certificate/key/file" \
@@ -31,6 +32,7 @@
 # external_publicKey="FfqAbYJ3EGdw1V+kZnyORTHC6hwvKLpIRkbbQJWuFkU=" \
 # external_serverName="bob" \
 # external_signPublicKey="T30ZcusVAz4c3C+Nc/zlIbn8c2BxNKUpEIYwZdofo1A=" \
+# printSensitiveData="YES" \
 # FAUCET_PORT="3002" \
 # FAUCET_CERT_PATH="./sslcert/fullchain.pem" \
 # FAUCET_KEY_PATH="./sslcert/privkey.pem" \
