@@ -1,10 +1,11 @@
 import { decrypt, encryptionKeypair, signingKeyPair, verifySignature, keyInfoFromKeyData } from './src/utils/naclHelper'
 // import { txHandler } from './txHandler'
-import { decrypt, encryptionKeypair, verifySignature } from './src/utils/naclHelper'
 import { handleTxV2 } from './handleTx'
 
 let api;
+
 let amount, keyData, walletSecret, walletAddress, walletAddressBytes, serverName, external_publicKey, external_signPublicKey, external_serverName, encryption_keypair, signature_keypair, printSensitiveData
+
 export const setApi = polkadotApi => api = polkadotApi
 
 let inProgress = false
@@ -20,7 +21,6 @@ const processQueue = ()=> {
     txQueue.shift()()
 }
 
-let amount, uri, keyData, walletAddress, publicKey, secretKey, serverName, external_publicKey, external_signPublicKey, external_serverName, printSensitiveData
 // Reads environment variables and generate keys if needed
 const setVariables = () => {
     amount = eval(process.env.amount) || 100000
@@ -67,8 +67,6 @@ if (printSensitiveData) {
     console.log('external_serverName: ', external_serverName,)
     console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
 }
-
-export const setApi = polkadotApi => api = polkadotApi
 
 export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     console.log('\n\n---New faucet request received---')
@@ -122,7 +120,7 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
         printSensitiveData
     )
     .then(hash => callback(null, hash))
-    .catch(err => console.error('txHandler error: ', err) | callback(err))
+    .catch(err => console.error('handleTx error: ', err) | callback(err))
     .finally(() => {
         inProgress = false
         processQueue()
