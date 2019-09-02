@@ -1,16 +1,20 @@
-import Keyring from '@polkadot/keyring/'
-// import hexToU8a from '@polkadot/util/hex/toU8a'
+import { Keyring } from '@polkadot/keyring/'
+import createPair from '@polkadot/keyring/pair'
 
-export async function txHandler(api, toAddress, amount, secretKey, printSensitiveData) {
+export async function txHandler(api, toAddress, amount, secretKey, publicKey, printSensitiveData) {
     // create an instance of our testing keyring
     // If you're using ES6 module imports instead of require, just change this line to:
     const keyring = new Keyring({ type: 'sr25519' })
 
-    // Restore funding wallet 
-    // Use first 32 byte secret key
+    // Restore funding wallet
+    printSensitiveData && console.log('Secret:', secretKey)
+    printSensitiveData && console.log('public', publicKey)
     
-    printSensitiveData && console.log('secret key:', secretKey)
-    const sender = keyring.addFromUri(secretKey, null, 'sr25519')
+    const pair  = createPair('sr25519', { secretKey: secretKey, publicKey: publicKey })
+    keyring.addPair(pair)
+
+    printSensitiveData && console.log('Pair: \n' + JSON.stringify(pair.address, null, 4), '\n')
+    const sender = keyring.getPair(pair.address)
     printSensitiveData && console.log('sender.address:', sender.address)
     showBalance(api, sender.address, toAddress, printSensitiveData)
     let balance = await api.query.balances.freeBalance(sender.address)

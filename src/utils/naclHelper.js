@@ -57,7 +57,7 @@ export const keyInfoFromKeyData = keyData => {
     return {
         walletAddress: ss58Encode(bytes.slice(64, 96)),
         walletAddressBytes: bytes.slice(64, 96),
-        first32Bytes: bytes.slice(0, 32),
+        first64Bytes: bytes.slice(0, 64),
     }
 }
 

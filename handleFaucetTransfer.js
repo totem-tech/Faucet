@@ -3,7 +3,7 @@ import { txHandler } from './txHandler'
 
 // Queue transactions
 let api;
-let amount, keyData, walletAddress, serverName, external_publicKey, external_signPublicKey, external_serverName, encryption_keypair, signature_keypair, printSensitiveData
+let amount, keyData, walletSecret, walletAddress, walletAddressBytes, serverName, external_publicKey, external_signPublicKey, external_serverName, encryption_keypair, signature_keypair, printSensitiveData
 // Reads environment variables and generate keys if needed
 const setVariables = () => {
     amount = eval(process.env.amount) || 100000
@@ -29,7 +29,9 @@ const setVariables = () => {
     const keyDataBytes = keyInfoFromKeyData(keyData)
     const encryptionKeyPair = encryptionKeypair(keyData)
     const signatureKeyPair = signingKeyPair(keyData)
+    walletSecret = keyDataBytes.first64Bytes
     walletAddress = keyDataBytes.walletAddress
+    walletAddressBytes = keyDataBytes.walletAddressBytes
     encryption_keypair = encryptionKeyPair
     signature_keypair = signatureKeyPair
 }
@@ -60,7 +62,7 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
         encryptedMsg,
         nonce,
         external_publicKey,
-        secretKey
+        encryption_keypair.secretKey
     )
     printSensitiveData && console.log('\ndecrypted', decrypted)
     if (!decrypted) return callback('Decryption failed')
@@ -83,7 +85,7 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     if (faucetRequest.funded) return callback('Request already funded')
     if (!faucetRequest.address) return callback('Invalid address')
 
-    txHandler(api, faucetRequest.address, amount, keyInfoFromKeyData(keyData).first32Bytes, printSensitiveData)
+    txHandler(api, faucetRequest.address, amount, walletSecret, walletAddressBytes, printSensitiveData)
         .catch(err => console.error('txHandler error: ', err) | callback(err))
     callback()
 }
