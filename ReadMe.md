@@ -1,12 +1,12 @@
 # Totem Faucet Server
 
-This server is used to distribute funding for Totem on the Totem Meccano Testnet and eventually the mainnet. 
+This server is used to distribute funding for transactions (XTX) on the Totem Meccano Testnet and eventually the mainnet. 
 
-The architecture is such that the faucet server can and should only receive funding requests from a known sending server.
+The architecture is such that the faucet server can and should only receive funding requests from a known sending server. You can also build firewall rules to enforce this, but this isn't in scope for this doc. 
 
-Both the faucet server and the sending server must therefore be configured in advance.
+Both the faucet server and the sending server must therefore be configured in advance. (This requires some playing around, and watch outr for those pesky copy paste issues.)
 
-This is achieved through a couple of steps:
+Joint config is also supported by a further signed attestation that the request is coming from a known server. This is achieved through a couple of steps:
 
 1. The sending server must sign the data it sends using it's own private signature key. The signature digest will be included in an encrypted message to the faucet server. 
 
@@ -22,7 +22,7 @@ The variables have the following format:
 | Description | Environmental variable name (uppercase = restart required, upon change of value) | Envirnmental variable type encoding | Faucet Server | Value Faucet Server|
 |---|---|---|---|---|
 | Print keys to console converts true false | printSensitiveData | string | x | YES |
-| Amount of funds to be transferred in the smallest unit | amount | int| x | 10000|
+| Amount of funds to be transferred in the smallest unit | amount | int| x | 100000|
 | Chat server public encryption key| external_publicKey | 32Bytes base64 encoded | x | FfqAbYJ3EGdw1V+kZnyORTHC6hwvKLpIRkbbQJWuFkU= |
 | Chat server name | external_serverName| string | x | bob|
 | Chat server public signing key | external_signPublicKey | 32Bytes base64 encoded | x | T30ZcusVAz4c3C+Nc/zlIbn8c2BxNKUpEIYwZdofo1A= |
@@ -33,17 +33,23 @@ The variables have the following format:
 | Server startup command | n/a| n/a| x | yarn run faucet|
 | Totem blockchain node URL| NODE_URL | Websocket URL| x | wss://your.totem.blockchain_node:port |
 | This server name (this is the Faucet server) | serverName | string | x | alice|
-| Secret mnemonic| uri| URI mnemonic phrase| x | //Alice|
+| Faucet server URL used by chat server | FAUCET_SERVER_URL | string | x | https://your.faucet.serverIP:port |
+| Storage path used by chat server | STORAGE_PATH | string | x | ./server/local-storage |
+| Secret mnemonic (not implemented)| uri| URI mnemonic phrase| x | //Alice|
 
 It is up to you how hyou manage setting up the environmental variables (recommended is using `npm dotenv` and `.env`) however for testing you may do the following :
 
 ```shell
 
-$ git clone https://gitlab.com/totem-tech/faucet.git
+git clone https://gitlab.com/totem-tech/faucet.git
+cd faucet
+yarn install
 
-$ cd faucet
+## create empty script file
+touch start.sh
 
-$ touch start.sh
+## Make it executable
+sudo chmod +x start.sh
 
 ```
 
