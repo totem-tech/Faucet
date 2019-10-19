@@ -49,6 +49,34 @@ async function connect() {
             ProjectHash: 'Hash',
             DeletedProject: 'Hash',
             ProjectStatus: 'u16',
+            AcceptAssignedStatus: 'bool',
+            BanStatus: 'bool',
+            LockStatus: 'bool',
+            ReasonCode: 'u16',
+            ReasonCodeType: 'u16',
+            NumberOfBlocks: 'u64',
+            PostingPeriod: 'u16',
+            ProjectHashRef: 'Hash',
+            StartOrEndBlockNumber: 'u64',
+            StatusOfTimeRecord: 'u16',
+            ReasonCodeStruct: {
+                'ReasonCodeKey': 'ReasonCode',
+                'ReasonCodeTypeKey': 'ReasonCodeType',
+            },
+            BannedStruct: {
+                'BanStatusKey': 'BanStatus',
+                'ReasonCodeStructKey': 'ReasonCodeStruct', //ReasonCodeStructType
+            },
+            Timekeeper: {
+                'total_blocks': 'NumberOfBlocks',
+                'locked_status': 'LockStatus',
+                'locked_reason': 'ReasonCodeStruct',
+                'submit_status': 'StatusOfTimeRecord',
+                'reason_code': 'ReasonCodeStruct',
+                'posting_period': 'PostingPeriod',
+                'start_block': 'StartOrEndBlockNumber',
+                'end_block': 'StartOrEndBlockNumber',
+            },
         }
     })
     // Retrieve the chain & node information information via rpc calls
