@@ -68,14 +68,16 @@ async function connect() {
                 'ReasonCodeStructKey': 'ReasonCodeStruct', //ReasonCodeStructType
             },
             Timekeeper: {
-                'total_blocks': 'NumberOfBlocks',
-                'locked_status': 'LockStatus',
-                'locked_reason': 'ReasonCodeStruct',
-                'submit_status': 'StatusOfTimeRecord',
-                'reason_code': 'ReasonCodeStruct',
-                'posting_period': 'PostingPeriod',
-                'start_block': 'StartOrEndBlockNumber',
-                'end_block': 'StartOrEndBlockNumber',
+                worker: 'AccountId',
+                project_hash: 'Hash',
+                total_blocks: 'NumberOfBlocks',
+                locked_status: 'LockStatus',
+                locked_reason: 'ReasonCodeStruct',
+                submit_status: 'StatusOfTimeRecord',
+                reason_code: 'ReasonCodeStruct',
+                posting_period: 'PostingPeriod',
+                start_block: 'StartOrEndBlockNumber',
+                end_block: 'StartOrEndBlockNumber'
             },
         }
     })
