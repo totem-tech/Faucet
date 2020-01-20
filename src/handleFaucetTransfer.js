@@ -1,4 +1,4 @@
-import { decrypt, encryptionKeypair, signingKeyPair, verifySignature, keyInfoFromKeyData } from './src/utils/naclHelper'
+import { decrypt, encryptionKeypair, signingKeyPair, verifySignature, keyInfoFromKeyData } from './utils/naclHelper'
 // import { txHandler } from './txHandler'
 import { handleTxV2 } from './handleTx'
 
@@ -10,7 +10,7 @@ export const setApi = polkadotApi => api = polkadotApi
 
 let inProgress = false
 const txQueue = new Array()
-const processQueue = ()=> {
+const processQueue = () => {
     if (txQueue.length === 0) {
         inProgress = false
         return;
@@ -64,7 +64,7 @@ if (printSensitiveData) {
     console.log('walletAddress: ', walletAddress, '\n')
     console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
     console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
-    console.log('external_serverName: ', external_serverName,)
+    console.log('external_serverName: ', external_serverName)
     console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
 }
 
@@ -94,7 +94,7 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     printSensitiveData && console.log('\nexternal_signPublicKey:\n', external_signPublicKey)
     const data = decryptedArr.slice(dataStart, sigStart).join('')
     printSensitiveData && console.log('\nData:\n', data)
-    
+
     if (!verifySignature(data, signature, external_signPublicKey)) return callback('Signature verification failed')
 
     const faucetRequest = JSON.parse(data)
@@ -111,21 +111,21 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
     //     amount,
     //     keyData// getKeyPair(keyData).secretKey32
     // )
-    const tx = ()=> handleTxV2(
-        api, 
-        faucetRequest.address, 
-        amount, 
-        walletSecret, 
-        walletAddressBytes, 
+    const tx = () => handleTxV2(
+        api,
+        faucetRequest.address,
+        amount,
+        walletSecret,
+        walletAddressBytes,
         printSensitiveData
     )
-    .then(hash => callback(null, hash))
-    .catch(err => console.error('handleTx error: ', err) | callback(err))
-    .finally(() => {
-        inProgress = false
-        processQueue()
-    })
+        .then(hash => callback(null, hash))
+        .catch(err => console.error('handleTx error: ', err) | callback(err))
+        .finally(() => {
+            inProgress = false
+            processQueue()
+        })
     txQueue.push(tx)
     processQueue(tx)
-    console.log('Faucet request added to queue. ', JSON.stringify({address: faucetRequest.address, amount}))
+    console.log('Faucet request added to queue. ', JSON.stringify({ address: faucetRequest.address, amount }))
 }
