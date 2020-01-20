@@ -3,6 +3,8 @@ import fs from 'fs'
 import socket from 'socket.io'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { handleFaucetTransfer, setApi } from './handleFaucetTransfer'
+import types from './utils/totem-polkadot-js-types'
+import { setDefaultConfig } from './utils/polkadotHelper'
 
 // Environment variables
 const NODE_URL = process.env.NODE_URL || 'wss://node1.totem.live'
@@ -42,45 +44,7 @@ async function connect() {
     // connect to node
     const provider = new WsProvider(NODE_URL)
     // Create the API and wait until ready
-    const api = await ApiPromise.create({
-        provider,
-        // Register custom types
-        types: {
-            ProjectHash: 'Hash',
-            DeletedProject: 'Hash',
-            ProjectStatus: 'u16',
-            AcceptAssignedStatus: 'bool',
-            BanStatus: 'bool',
-            LockStatus: 'bool',
-            ReasonCode: 'u16',
-            ReasonCodeType: 'u16',
-            NumberOfBlocks: 'u64',
-            PostingPeriod: 'u16',
-            ProjectHashRef: 'Hash',
-            StartOrEndBlockNumber: 'u64',
-            StatusOfTimeRecord: 'u16',
-            ReasonCodeStruct: {
-                'ReasonCodeKey': 'ReasonCode',
-                'ReasonCodeTypeKey': 'ReasonCodeType',
-            },
-            BannedStruct: {
-                'BanStatusKey': 'BanStatus',
-                'ReasonCodeStructKey': 'ReasonCodeStruct', //ReasonCodeStructType
-            },
-            Timekeeper: {
-                worker: 'AccountId',
-                project_hash: 'Hash',
-                total_blocks: 'NumberOfBlocks',
-                locked_status: 'LockStatus',
-                locked_reason: 'ReasonCodeStruct',
-                submit_status: 'StatusOfTimeRecord',
-                reason_code: 'ReasonCodeStruct',
-                posting_period: 'PostingPeriod',
-                start_block: 'StartOrEndBlockNumber',
-                end_block: 'StartOrEndBlockNumber'
-            },
-        }
-    })
+    const api = await ApiPromise.create({ provider, types })
     // Retrieve the chain & node information information via rpc calls
     const [chain, nodeName, nodeVersion] = await Promise.all([
         api.rpc.system.chain(),
