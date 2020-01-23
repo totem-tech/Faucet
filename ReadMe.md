@@ -4,7 +4,7 @@ This server is used to distribute funding for Totem on the Totem Meccano Testnet
 
 The architecture is such that the faucet server can and should only receive funding requests from a known sending server.
 
-Both the faucet server and the sending server must therefore be configured in advance.
+Both the faucet server and the sending server must therefore be configured in advance. (This requires some playing around, and watch out for those pesky copy paste issues.)
 
 This is achieved through a couple of steps:
 
@@ -37,20 +37,20 @@ The variables have the following format:
 
 It is up to you how hyou manage setting up the environmental variables (recommended is using `npm dotenv` and `.env`) however for testing you may do the following :
 
-```shell
+```bash
+git clone https://gitlab.com/totem-tech/faucet.git
+cd faucet
+yarn install
 
-$ git clone https://gitlab.com/totem-tech/faucet.git
+touch start.sh
 
-$ cd faucet
-
-$ touch start.sh
-
+## Make it executable
+sudo chmod +x start.sh
 ```
 
 Then add something like the following code to `start.sh` using your favourite text editor (or you can just type "open -e .start.sh" to open it in TextEdit) and save:
 
 ```bash
-
 printSensitiveData="YES" \
 amount="100000" \
 uri="//Alice" \
@@ -64,13 +64,52 @@ FAUCET_CERT_PATH="./sslcert/fullchain.pem" \
 FAUCET_KEY_PATH="./sslcert/privkey.pem" \
 NODE_URL="wss://your.totem.blockchain_node:port \
 yarn run faucet
+```
+### Updating git submodules
+
+In order for the faucet to run properly you will need to configure your repo to use the type definitions for Totem which are stored in a common repo for all totem applications.
+
+```bash
+cd faucet
+git config --file=.gitmodules submodule.src/utils.url https://gitlab.com/totem-tech/common-utils.git
 
 ```
 
+You can check the contents of the modules file:
+
+```bash
+nano .gitmodules
+```
+
+It should look like this:
+
+```bash 
+[submodule "src/utils"]
+        path = src/utils
+        url = https://gitlab.com/totem-tech/common-utils.git
+        branch = dev
+```
+
+Change the branch to master and initialise the utils folder. This will pull the files directly:
+
+```bash
+git config --file=.gitmodules submodule.src/utils.branch master
+git submodule update --init --recursive --remote
+```
+
+To allow you to automatically pull any changes when the server is restarted you can add the following lines to the top of your `start.sh` script. 
+
+```bash
+    git pull && git submodule update --recursive --remote && \
+````
+
+**Note that this is for convenience, and should not be used on a live production server.**
+
 Now you can start the faucet server issuing:
 
-    $ ./start.sh
-
+```bash
+./start.sh
+```
 
 ## Medium Term
 The medium-term plan is that this development will be enhanced to distribute funds following a payment of cryptocurency by monitoring other blockchains for incoming payments to deterministic addresses communicated to the requesting client via the chat service, and could integrate other client specific requests.
