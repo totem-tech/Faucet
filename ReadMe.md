@@ -42,6 +42,7 @@ git clone https://gitlab.com/totem-tech/faucet.git
 cd faucet
 yarn install
 
+## create empty script file
 touch start.sh
 
 ## Make it executable
