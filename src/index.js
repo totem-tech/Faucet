@@ -1,5 +1,5 @@
 import https from 'https'
-import fs from 'fs'
+import fs, { exists } from 'fs'
 import socket from 'socket.io'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { handleFaucetTransfer, setApi } from './handleFaucetTransfer'
@@ -57,7 +57,8 @@ async function connect() {
     setApi(api)
 }
 connect().catch((err) => {
-    throw new Error('Connection failed! Error:\n', err)
+    console.error('Connection failed! Error:\n', err)
+    exists(1)
 }).finally(() => {
     // Start server
     server.listen(FAUCET_PORT, () => console.log('\nFaucet server websocket listening on port ', FAUCET_PORT))
