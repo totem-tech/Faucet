@@ -1,9 +1,17 @@
-import { decrypt, encryptionKeypair, signingKeyPair, verifySignature, keyInfoFromKeyData } from './utils/naclHelper'
+import { decrypt, encryptionKeypair, newSignature, signingKeyPair, verifySignature, keyInfoFromKeyData } from './utils/naclHelper'
 import { transfer } from './utils/polkadotHelper'
 
 
-let amount, keyData, walletSecret, walletAddress, walletAddressBytes, serverName, external_publicKey, external_signPublicKey, external_serverName, encryption_keypair, signature_keypair, printSensitiveData
-let api;
+let api,
+    amount,
+    keyData,
+    wallet, serverName,
+    external_publicKey,
+    external_signPublicKey,
+    external_serverName,
+    encryption_keypair,
+    signature_keypair,
+    printSensitiveData
 
 export const setApi = polkadotApi => api = polkadotApi
 
@@ -29,14 +37,9 @@ const setVariables = () => {
 
     // Key pairs of this server
     keyData = process.env.keyData
-    const keyDataBytes = keyInfoFromKeyData(keyData)
-    const encryptionKeyPair = encryptionKeypair(keyData)
-    const signatureKeyPair = signingKeyPair(keyData)
-    walletSecret = keyDataBytes.first64Bytes
-    walletAddress = keyDataBytes.walletAddress
-    walletAddressBytes = keyDataBytes.walletAddressBytes
-    encryption_keypair = encryptionKeyPair
-    signature_keypair = signatureKeyPair
+    wallet = keyInfoFromKeyData(keyData)
+    encryption_keypair = encryptionKeypair(keyData)
+    signature_keypair = signingKeyPair(keyData)
 }
 // Set variables on start
 const err = setVariables()
@@ -47,7 +50,7 @@ printSensitiveData = process.env.printSensitiveData === "YES"
 if (printSensitiveData) {
     console.log('serverName: ', serverName, '\n')
     console.log('keyData: ', keyData, '\n')
-    console.log('walletAddress: ', walletAddress, '\n')
+    console.log('wallet.address: ', wallet.address, '\n')
     console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
     console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
     console.log('external_serverName: ', external_serverName)
@@ -83,12 +86,12 @@ export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
 
     if (!verifySignature(data, signature, external_signPublicKey)) return callback('Signature verification failed')
 
-    const { address, funded } = JSON.parse(data)
+    const { address: recipientAddress, funded } = JSON.parse(data)
     if (funded) return callback('Request already funded')
-    if (!address) return callback('Invalid address')
+    if (!recipientAddress) return callback('Invalid address')
 
-    console.log('Faucet request:', JSON.stringify({ address, amount }))
-    transfer(address, amount, walletSecret, walletAddressBytes, api)
+    console.log('Faucet request:', JSON.stringify({ address: recipientAddress, amount }))
+    transfer(recipientAddress, amount, wallet.secretKey, wallet.publicKey, api)
         .then(hash => callback(null, hash))
         .catch(err => console.error('handleTx error: ', err) | callback(err))
 }
