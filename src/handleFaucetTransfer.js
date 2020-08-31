@@ -34,7 +34,6 @@ const setVariables = () => {
 
     // Prevent generating keys when not needed
     if (keyData === process.env.keyData) return
-
     // Key pairs of this server
     keyData = process.env.keyData
     wallet = keyInfoFromKeyData(keyData)
