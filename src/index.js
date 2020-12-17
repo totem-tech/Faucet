@@ -4,7 +4,6 @@ import socket from 'socket.io'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { handleFaucetTransfer, setApi } from './handleFaucetTransfer'
 import types from './utils/totem-polkadot-js-types'
-import { setDefaultConfig } from './utils/polkadotHelper'
 
 // Environment variables
 const NODE_URL = process.env.NODE_URL || 'wss://node1.totem.live'
@@ -17,7 +16,7 @@ const server = https.createServer({
     cert: fs.readFileSync(FAUCET_CERT_PATH),
     key: fs.readFileSync(FAUCET_KEY_PATH)
 })
-const io = socket.listen(server)
+const io = socket(server)
 
 // Authentication middleware: prevent conneting if authentication fails
 // ToDo: use signed message and verify?
