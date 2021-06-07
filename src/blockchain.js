@@ -75,7 +75,7 @@ export const transfer = async (recipient, amount, rewardId, type) => {
         !!success && await dbRewardsHistory.set(rewardId, doc)
     }
 
-    if (status === 'success') return doc
+    if (doc.status === 'success') return doc
 
     // construct a transaction
     doc.txId = randomHex(recipient, 'blake2', 256)
