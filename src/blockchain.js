@@ -1,5 +1,6 @@
+import uuid from 'uuid'
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import { keyring, signAndSend } from './utils/polkadotHelper'
+import { keyring, query, signAndSend } from './utils/polkadotHelper'
 import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
 import { generateHash } from './utils/utils'
@@ -39,35 +40,54 @@ export const getConnection = async (nodeUrl = NODE_URL) => {
     return await connectionPromise
 }
 
+/**
+ * @name randomHex
+ * @summary generates a hash using the supplied address and a internally generated time based UUID as seed.
+ * 
+ * @param {String} address 
+ * 
+ * @returns {String} hash
+ */
+export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
+
 export const transfer = async (recipient, amount, rewardId, type) => {
+    // connect to blockchain
+    const { api } = await getConnection()
     const doc = await dbRewardsHistory.get(rewardId) || {
         amount,
         recipient,
         status: 'pending',
         type,
     }
-    const { status, txId } = doc
-    if ((doc.txHash || txId) && status === 'success') return doc
 
-    // use new API with txId
-    // doc.txId = generateHash(`${type}-${recipient}-${id}`, 'blake2', 256)
-    // TODO: if transaction pending, check txId
-    // if (status === 'pending') {
-    // }
+    if (!!doc.txId) {
+        // Check if previously initiated tx was successful
+        const success = await query(
+            api,
+            api.query
+                .bonsai
+                .isSuccessful,
+            doc.txId,
+        )
+        doc.status = !!success
+            ? 'success'
+            : status
+        !!success && await dbRewardsHistory.set(rewardId, doc)
+    }
 
-    // connect to blockchain
-    const { api } = await getConnection()
+    if (status === 'success') return doc
 
     // construct a transaction
-    const tx = await api.tx.balances.transfer(recipient, amount)
+    doc.txId = randomHex(recipient, 'blake2', 256)
+    const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
 
     // save record with pending status
     await dbRewardsHistory.set(rewardId, doc)
 
     // execute the transaction
-    const [txHash, events] = await signAndSend(api, walletAddress, tx)
-    doc.status = 'success'
+    const [txHash] = await signAndSend(api, walletAddress, tx)
     doc.txHash = txHash
+    doc.status = 'success'
 
     await dbRewardsHistory.set(rewardId, doc)
     return doc

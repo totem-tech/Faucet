@@ -1,4 +1,4 @@
-import { getConnection, transfer } from './blockchain'
+import { transfer } from './blockchain'
 import { isHash } from './utils/utils'
 
 const { signupRewardAmount } = process.env
