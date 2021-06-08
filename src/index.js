@@ -23,6 +23,7 @@ const server = https.createServer({
     key: fs.readFileSync(FAUCET_KEY_PATH)
 })
 const io = socket(server)
+const clients = new Map()
 
 // Authentication middleware: prevent conneting if authentication fails
 // ToDo: use signed message and verify?
@@ -59,8 +60,12 @@ Object.keys(handlers)
 
 // Setup websocket request handlers
 io.on('connection', client => {
-    console.log('Connected to', client.id)
-    client.on('disonnect', () => { console.log('Client disconnected', client.id) })
+    clients.set(client.id, client)
+    console.log(client.id, 'Connected | Total:', clients.size)
+    client.on('disconnect', () => {
+        clients.delete(client.id)
+        console.log(client.id, 'Disconnected | Total:', clients.size)
+    })
 
     // Keep legacy faucet requsts active until production messaging serivce is updated to latest 
     client.on('faucet', handleFaucetTransfer) //(_1, _2, cb) => isFn(cb) && cb('Deprecated'))
@@ -70,18 +75,20 @@ io.on('connection', client => {
             client.on(eventName, handlers[eventName])
         )
 })
+
 // Start server
 server.listen(FAUCET_PORT, () => {
     console.log('\nFaucet server websocket listening on port ', FAUCET_PORT)
 })
 
+// connect to blockchain
 getConnection(NODE_URL)
     .catch((err) => {
         console.error('Blockchain connection failed! Error:\n', err)
         exist(1)
     })
-    .finally(() => {
-    })
+// .finally(() => { })
 
+// setup CouchDB connection
 setDbConnection(CouchDB_URL, true)
     .catch(err => console.log('CouchDB setup failed', err))
