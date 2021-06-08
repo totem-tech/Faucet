@@ -1,3 +1,4 @@
+import { getConnection } from './blockchain'
 import { decrypt, encryptionKeypair, newSignature, signingKeyPair, verifySignature, keyInfoFromKeyData } from './utils/naclHelper'
 import { transfer } from './utils/polkadotHelper'
 
@@ -56,9 +57,10 @@ if (printSensitiveData) {
     console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
 }
 
-export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
+export const handleFaucetTransfer = async (encryptedMsg, nonce, callback) => {
     console.log('\n\n---New faucet request received---')
     if (typeof callback !== 'function') return;
+    const { api } = await getConnection()
     if (!api || !api.rpc) return callback('Not connected to node')
     const err = setVariables()
     if (err) return callback(err) | console.error(err);

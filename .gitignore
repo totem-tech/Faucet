@@ -5,3 +5,4 @@ start.sh
 sslcert/fullchain.pem
 sslcert/how-to.md
 sslcert/privkey.pem
+log
