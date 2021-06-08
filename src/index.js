@@ -62,8 +62,8 @@ io.on('connection', client => {
     console.log('Connected to', client.id)
     client.on('disonnect', () => { console.log('Client disconnected', client.id) })
 
-    //handleFaucetTransfer
-    client.on('faucet', (_1, _2, cb) => isFn(cb) && cb('Deprecated'))
+    // Keep legacy faucet requsts active until production messaging serivce is updated to latest 
+    client.on('faucet', handleFaucetTransfer) //(_1, _2, cb) => isFn(cb) && cb('Deprecated'))
 
     Object.keys(handlers)
         .forEach(eventName =>
