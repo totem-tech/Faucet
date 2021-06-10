@@ -7,7 +7,6 @@ import { generateHash } from './utils/utils'
 import PromisE from './utils/PromisE'
 
 // Environment variables
-const NODE_URL = 'wss://node1.totem.live'
 const dbRewardsHistory = new CouchDBStorage(null, 'rewards_history')
 let connectionPromise = null
 let walletAddress = null
@@ -34,7 +33,7 @@ const connect = async (nodeUrl) => {
     }
 }
 
-export const getConnection = async (nodeUrl = NODE_URL) => {
+export const getConnection = async (nodeUrl) => {
     if (!connectionPromise) {
         connectionPromise = await connect(nodeUrl)
     }

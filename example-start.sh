@@ -2,43 +2,19 @@
 
 # Store the `start.sh` file in the root directory of the faucet server and execute using `./start.sh`.
 
-
-
-
 # _______________DYNAMIC_VARIABLES_BELOW_______________="Changes to variables below DO NOT REQUIRE server restart" \
-# amount="int: amount of funds to transfer. Default: 100000" \
-# uri="string: funding wallet URI" \
-# keyData="string: (96 bytes hex without 0x) exactly as found in the oo7-substrate's secretStore" \
-# serverName="string: any name for the server" \
-# external_publicKey="string-base64-encoded: 32 byte public encryption key from the UI/Chat server" \
-# external_serverName="string: UI/Chat server's name" \
-# external_signPublicKey="string-base64-encoded: 32 byte public signing key from the UI/Chat server" \
-# printSensitiveData="string: enable or disable printing of keypair and other sensitive data. To Enable set value to 'YES' (case-sensitive)" \
-# _______________STATIC_VARIABLES_BELOW_______________="Changes to below variables DO REQUIRE server restart" \
-# FAUCET_PORT="int: port number" \
-# FAUCET_CERT_PATH="string: ./path/to/ssl/certificate/key/file" \
-# FAUCET_KEY_PATH="string: ./path/to/ssl/certificate/private/key/file" \
-# NODE_URL="string: wss://host.ext.....  Default: 'wss://node1.totem.live'" \
+# keyData="string: PolkadotJS(encoded) or oo7(keyData) identity information" \
+# amount="integer: (to be deprecated)" \
+# CouchDB_URL="string: CouchDB connection URL including username and password. https://user:password@1.2.3.4:1234" \
+# external_serverName="string: name of the messaging server" \
+# external_publicKey="string(hex): messaging server's encryption public key" \
+# external_signPublicKey="string(hex): messaging server's signature public key" \
+# FAUCET_PORT="integer: port number to use when starting the websocket server. Default: 3002" \
+# FAUCET_CERT_PATH="string: path to SSL certificate. Default: './sslcert/fullchain.pem'" \
+# FAUCET_KEY_PATH="string: path to SSL certificate key. Default: './sslcert/privkey.pem'" \
+# NODE_URL="string: substrate blockchain node URL. Default: 'wss://node1.totem.live'" \
+# printSensitiveData="string: (optional) CAUTION: always leave it turned off when in production mode or loggin is enabled. Only when you know what you are doing, use 'YES' to enable printing of private keys in the console. " \
+# referralRewardAmount="integer: amount to be rewarded for referrals" \
+# serverName="string: a name for this server" \
+# signupRewardAmount="integer: amount to be rewarded to newly registered users" \
 # yarn run faucet
-
-
-
-#______________TYPICAL_EXAMPLE_OF_FILE_______________
-# initialize submodules if not already done
-git submodule init
-# pull latest commits to submodules
-git submodule update --recursive --remote
-
-## Start server
-amount="500" \
-keyData="98319d4ff8a9508c4bb0cf0b5a78d760a0b2082c02775e6e82370816fedfff48925a225d97aa00682d6a59b95b18780c10d7032336e88f3442b42361f4a66011d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" \
-serverName="alice" \
-external_publicKey="DTUpj+WNvjS8oP7Rcy3kSC5nigndSTIUkE+kODymVBQ=" \
-external_serverName="bob" \
-external_signPublicKey="Mv7cPdMU8y1hj/lMNagaVaKyTzPyLwMFgzvjdiohhtg=" \
-printSensitiveData="YES" \
-FAUCET_PORT="3002" \
-FAUCET_CERT_PATH="../totem-ui/sslcert/fullchain.pem" \
-FAUCET_KEY_PATH="../totem-ui/sslcert/privkey.pem" \
-NODE_URL="wss://node1.totem.live" \
-yarn run faucet
