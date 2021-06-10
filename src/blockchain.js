@@ -83,7 +83,7 @@ export const transfer = async (recipient, amount, rewardId, type) => {
         )
         doc.status = !!success
             ? 'success'
-            : status
+            : doc.status
         !!success && await dbRewardsHistory.set(rewardId, doc)
     }
 
