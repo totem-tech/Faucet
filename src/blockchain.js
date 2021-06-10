@@ -4,6 +4,7 @@ import { keyring, query, signAndSend } from './utils/polkadotHelper'
 import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
 import { generateHash } from './utils/utils'
+import PromisE from './utils/PromisE'
 
 // Environment variables
 const NODE_URL = 'wss://node1.totem.live'
@@ -61,6 +62,17 @@ export const transfer = async (recipient, amount, rewardId, type) => {
     }
 
     if (!!doc.txId) {
+        const isStarted = await query(
+            api,
+            api.query
+                .bonsai
+                .isStarted,
+            doc.txId,
+        )
+
+        // transaction already started. Wait 15 seconds to check if it was successful
+        if (isStarted) await PromisE.delay(15000)
+
         // Check if previously initiated tx was successful
         const success = await query(
             api,
