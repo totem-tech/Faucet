@@ -68,7 +68,7 @@ io.on('connection', client => {
     })
 
     // Keep legacy faucet requsts active until production messaging serivce is updated to latest 
-    client.on('faucet', handleFaucetTransfer) //(_1, _2, cb) => isFn(cb) && cb('Deprecated'))
+    client.on('faucet', (_1, _2, cb) => isFn(cb) && cb('Deprecated'))
 
     Object.keys(handlers)
         .forEach(eventName =>

@@ -14,7 +14,7 @@ let walletAddress = null
 const connect = async (nodeUrl) => {
     console.log('Connecting to Totem Blockchain Network...')
     // API provider
-    const provider = new WsProvider(nodeUrl)
+    const provider = new WsProvider(nodeUrl, true)
 
     // Create the API and wait until ready
     const api = await ApiPromise.create({ provider, types })
