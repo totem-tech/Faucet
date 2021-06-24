@@ -8,6 +8,7 @@ import { handleSignupReward } from './handleSignupReward'
 import { handleReferralReward } from './handleReferralReward'
 import { handleFaucetTransfer } from './handleFaucetTransfer'
 import { isFn } from './utils/utils'
+import { handleRewardPayment } from './handleRewardPayment'
 
 // Environment variables
 const {
@@ -52,6 +53,7 @@ const decryptCb = (eventName, handler) => async function decryptCb(encryptedMsg,
 const handlers = {
     'signup-reward': handleSignupReward,
     'referral-reward': handleReferralReward,
+    'reward-payment': handleRewardPayment,
 }
 Object.keys(handlers)
     .forEach(name =>

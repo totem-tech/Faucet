@@ -3,6 +3,7 @@ import { isHash } from './utils/utils'
 
 const { referralRewardAmount } = process.env
 
+//ToDo: deprecate
 export const handleReferralReward = async (decryptedData, callback) => {
     const { address, rewardId } = JSON.parse(decryptedData)
     if (!address) return callback('Invalid address')
@@ -16,5 +17,9 @@ export const handleReferralReward = async (decryptedData, callback) => {
         rewardId,
         'referral-reward',
     )
-    callback(null, { txId, txHash })
+    callback(null, {
+        amount: referralRewardAmount,
+        txId,
+        txHash,
+    })
 }

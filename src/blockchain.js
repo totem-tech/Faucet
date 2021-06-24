@@ -50,17 +50,18 @@ export const getConnection = async (nodeUrl) => {
  */
 export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 
-export const transfer = async (recipient, amount, rewardId, type) => {
+export const transfer = async (recipient, amount, rewardId, rewardType) => {
     // connect to blockchain
     const { api } = await getConnection()
     const doc = await dbRewardsHistory.get(rewardId) || {
         amount,
         recipient,
         status: 'pending',
-        type,
+        type: rewardType,
     }
 
     if (!!doc.txId) {
+        // check transaction status
         const isStarted = await query(
             api,
             api.query
