@@ -14,7 +14,7 @@ let walletAddress = null
 const connect = async (nodeUrl) => {
     console.log('Connecting to Totem Blockchain Network...')
     // API provider
-    const provider = new WsProvider(nodeUrl)
+    const provider = new WsProvider(nodeUrl, true)
 
     // Create the API and wait until ready
     const api = await ApiPromise.create({ provider, types })
@@ -50,17 +50,18 @@ export const getConnection = async (nodeUrl) => {
  */
 export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 
-export const transfer = async (recipient, amount, rewardId, type) => {
+export const transfer = async (recipient, amount, rewardId, rewardType) => {
     // connect to blockchain
     const { api } = await getConnection()
     const doc = await dbRewardsHistory.get(rewardId) || {
         amount,
         recipient,
         status: 'pending',
-        type,
+        type: rewardType,
     }
 
     if (!!doc.txId) {
+        // check transaction status
         const isStarted = await query(
             api,
             api.query
