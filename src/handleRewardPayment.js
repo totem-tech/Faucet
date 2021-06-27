@@ -13,7 +13,7 @@ const rewardAmounts = {
 const validationConf = {
     address: {
         required: true,
-        type: TYPES.address,
+        type: TYPES.identity,
     },
     rewardId: {
         required: true,
