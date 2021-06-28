@@ -1,8 +1,6 @@
 import { transfer } from './blockchain'
 import { TYPES, validateObj } from './utils/validator'
 
-const { signupTwitterRewardAmount } = process.env
-
 // reward amounts for each valid reward
 const rewardAmounts = {
     'referral-reward': process.env.referralRewardAmount,
@@ -42,5 +40,5 @@ export const handleRewardPayment = async (decryptedData, callback) => {
         rewardId,
         rewardType,
     )
-    callback(null, { amount: signupTwitterRewardAmount, txId, txHash })
+    callback(null, { amount, txId, txHash })
 }
