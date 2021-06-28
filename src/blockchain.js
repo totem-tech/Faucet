@@ -7,7 +7,7 @@ import { generateHash } from './utils/utils'
 import PromisE from './utils/PromisE'
 
 // Environment variables
-const dbRewardsHistory = new CouchDBStorage(null, 'rewards_history')
+const dbHistory = new CouchDBStorage(null, 'faucet_history')
 let connectionPromise = null
 let walletAddress = null
 
@@ -53,7 +53,7 @@ export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 export const transfer = async (recipient, amount, rewardId, rewardType) => {
     // connect to blockchain
     const { api } = await getConnection()
-    const doc = await dbRewardsHistory.get(rewardId) || {
+    const doc = await dbHistory.get(rewardId) || {
         amount,
         recipient,
         status: 'pending',
@@ -84,7 +84,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType) => {
         doc.status = !!success
             ? 'success'
             : doc.status
-        !!success && await dbRewardsHistory.set(rewardId, doc)
+        !!success && await dbHistory.set(rewardId, doc)
     }
 
     if (doc.status === 'success') return doc
@@ -94,14 +94,14 @@ export const transfer = async (recipient, amount, rewardId, rewardType) => {
     const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
 
     // save record with pending status
-    await dbRewardsHistory.set(rewardId, doc)
+    await dbHistory.set(rewardId, doc)
 
     // execute the transaction
     const [txHash] = await signAndSend(api, walletAddress, tx)
     doc.txHash = txHash
     doc.status = 'success'
 
-    await dbRewardsHistory.set(rewardId, doc)
+    await dbHistory.set(rewardId, doc)
     return doc
 }
 
