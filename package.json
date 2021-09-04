@@ -42,7 +42,7 @@
   "dependencies": {
     "@polkadot/api": "^0.100.1",
     "@polkadot/keyring": "^1.8.1",
-    "@polkadot/wasm-crypto": "^0.14.1",
+    "@polkadot/wasm-crypto": "^0.20.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "bip39": "^2.5.0",
