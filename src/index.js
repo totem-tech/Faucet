@@ -51,8 +51,8 @@ const decryptCb = (eventName, handler) => async function decryptCb(encryptedMsg,
     }
 }
 const handlers = {
-    'signup-reward': handleSignupReward,
-    'referral-reward': handleReferralReward,
+    // 'signup-reward': handleSignupReward,
+    // 'referral-reward': handleReferralReward,
     'reward-payment': handleRewardPayment,
 }
 Object.keys(handlers)

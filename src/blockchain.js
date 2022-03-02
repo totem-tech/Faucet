@@ -60,6 +60,20 @@ export const transfer = async (recipient, amount, rewardId, rewardType) => {
         type: rewardType,
     }
 
+    // new entry
+    if (!doc._id) {
+        const docs = await dbHistory.search(
+            { recipient, type: rewardType },
+            2,
+            0,
+            false,
+        )
+        const exists = docs
+            .filter(({ _id }) => _id != rewardId)
+            .length > 0
+        if (exists) return docs[0]
+    }
+
     if (!!doc.txId) {
         // check transaction status
         const isStarted = await query(
