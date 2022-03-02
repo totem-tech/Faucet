@@ -4,9 +4,6 @@ import socket from 'socket.io'
 import { getConnection } from './blockchain'
 import { decryptMessage } from './decryptMessage'
 import { getConnection as setDbConnection } from './utils/CouchDBStorage'
-import { handleSignupReward } from './handleSignupReward'
-import { handleReferralReward } from './handleReferralReward'
-import { handleFaucetTransfer } from './handleFaucetTransfer'
 import { isFn } from './utils/utils'
 import { handleRewardPayment } from './handleRewardPayment'
 
@@ -51,8 +48,6 @@ const decryptCb = (eventName, handler) => async function decryptCb(encryptedMsg,
     }
 }
 const handlers = {
-    // 'signup-reward': handleSignupReward,
-    // 'referral-reward': handleReferralReward,
     'reward-payment': handleRewardPayment,
 }
 Object.keys(handlers)
