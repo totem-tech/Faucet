@@ -77,6 +77,8 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
             .length >= limitPerType
         if (limitReached) return {}
     }
+    const balance = query(api.query.balances.freeBalance, walletAddress)
+    if (balance < amount + 1000) throw new Error('Faucet server: insufficient funds')
 
     if (!!doc.txId) {
         // check transaction status
