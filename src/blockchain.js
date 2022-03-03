@@ -66,7 +66,6 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
 
     // new entry
     if (!doc._id && limitPerType > 0) {
-        console.log({ limitPerType })
         const docs = await dbHistory.search(
             { recipient, type: rewardType },
             limitPerType,
@@ -141,3 +140,21 @@ export const setupKeyring = async (wallet = {}) => {
     walletAddress = address
     return keyring.contains(address)
 }
+
+
+// initialize
+setTimeout(async () => {
+    // create an indexes, ignores if already exists
+    const indexDefs = [
+        {
+            index: { fields: ['recipient', 'type'] },
+            name: 'recipient-type-index',
+        },
+        {
+            index: { fields: ['recipient'] },
+            name: 'recipient-index',
+        }
+    ]
+    const db = await dbHistory.getDB()
+    indexDefs.forEach(def => db.createIndex(def).catch(() => { }))
+})
