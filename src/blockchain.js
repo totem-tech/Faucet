@@ -10,14 +10,17 @@ import PromisE from './utils/PromisE'
 const dbHistory = new CouchDBStorage(null, 'faucet_history')
 let connectionPromise = null
 let walletAddress = null
+let api, provider
+
+export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
 const connect = async (nodeUrl) => {
-    console.log('Connecting to Totem Blockchain Network...')
+    log('Connecting to Totem Blockchain Network...')
     // API provider
-    const provider = new WsProvider(nodeUrl, true)
+    provider = provider || new WsProvider(nodeUrl, true)
 
     // Create the API and wait until ready
-    const api = await ApiPromise.create({ provider, types })
+    api = api || await ApiPromise.create({ provider, types })
 
     // Retrieve the chain & node information information via rpc calls
     const [chain, nodeName, nodeVersion] = await Promise.all([
@@ -26,7 +29,7 @@ const connect = async (nodeUrl) => {
         api.rpc.system.version()
     ])
 
-    console.log(`Connected to "${chain}" using "${nodeName}" v${nodeVersion}`)
+    log(`Connected to "${chain}" using "${nodeName}" v${nodeVersion}`)
     return {
         api,
         provider,
@@ -37,6 +40,7 @@ export const getConnection = async (nodeUrl) => {
     if (!connectionPromise) {
         connectionPromise = await connect(nodeUrl)
     }
+    await api.isReady
     return await connectionPromise
 }
 
@@ -50,7 +54,7 @@ export const getConnection = async (nodeUrl) => {
  */
 export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 
-export const transfer = async (recipient, amount, rewardId, rewardType) => {
+export const transfer = async (recipient, amount, rewardId, rewardType, limitPerType = 0) => {
     // connect to blockchain
     const { api } = await getConnection()
     const doc = await dbHistory.get(rewardId) || {
@@ -61,17 +65,18 @@ export const transfer = async (recipient, amount, rewardId, rewardType) => {
     }
 
     // new entry
-    if (!doc._id) {
+    if (!doc._id && limitPerType > 0) {
+        console.log({ limitPerType })
         const docs = await dbHistory.search(
             { recipient, type: rewardType },
-            2,
+            limitPerType,
             0,
             false,
         )
-        const exists = docs
+        const limitReached = docs
             .filter(({ _id }) => _id != rewardId)
-            .length > 0
-        if (exists) return docs[0]
+            .length >= limitPerType
+        if (limitReached) return {}
     }
 
     if (!!doc.txId) {

@@ -82,7 +82,7 @@ server.listen(FAUCET_PORT, () => {
 getConnection(NODE_URL)
     .catch((err) => {
         console.error('Blockchain connection failed! Error:\n', err)
-        exist(1)
+        exit(1)
     })
 // .finally(() => { })
 
