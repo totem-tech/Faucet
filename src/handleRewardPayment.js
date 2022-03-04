@@ -47,14 +47,14 @@ export const handleRewardPayment = async (decryptedData, callback) => {
         if (!amount || amount < 0) return callback('Reward type no longer available')
 
         log(rewardId, { address, amount, rewardType })
-        const { txId, txHash } = await transfer(
+        const { status, txId, txHash } = await transfer(
             address,
             amount,
             rewardId,
             rewardType,
             rewardLimits[rewardType],
         )
-        callback(null, { amount, txId, txHash })
+        callback(null, { amount, status, txId, txHash })
     } catch (err) {
         callback(err.message || err, {})
     }

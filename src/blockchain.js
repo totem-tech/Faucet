@@ -36,12 +36,57 @@ const connect = async (nodeUrl) => {
     }
 }
 
+/**
+ * @name    checkTxStatus
+ * 
+ * @param   {ApiPromise} api 
+ * @param   {String}     txId 
+ * 
+ * @returns {String}    failed | started | success
+ */
+const checkTxStatus = (api, txId) => {
+    const [blockStarted = 0, blockSuccess = 0] = await query(
+        api.queryMulti,
+        [[
+            [api.query.bonsai.isStarted, txId],
+            [api.query.bonsai.isSuccessful, txId],
+        ]],
+    )
+
+    const status = !blockSuccess
+        ? blockStarted
+            ? 'started'
+            : 'failed'
+        : 'success'
+    return [status, blockStarted, blockSuccess]
+}
+
 export const getConnection = async (nodeUrl) => {
     if (!connectionPromise) {
         connectionPromise = await connect(nodeUrl)
     }
     await api.isReady
     return await connectionPromise
+}
+/**
+ * @name    getCurrentBlock
+ * @summary get current block number
+ * 
+ * @param   {Function} callback (optional) to subscribe to block number changes
+ * 
+ * @returns {Number|Function} latest block number if `@callback` not supplied, otherwise, function to unsubscribe
+ */
+export const getCurrentBlock = async (api, callback) => {
+    if (!isFn(callback)) {
+        const res = await query(api, 'api.rpc.chain.getBlock')
+        try {
+            return res.block.header.number
+        } catch (e) {
+            console.log('Unexpected error reading block number', e)
+            return 0
+        }
+    }
+    return query(api, 'api.rpc.chain.subscribeNewHeads', [res => callback(res.number)])
 }
 
 /**
@@ -67,7 +112,10 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     // new entry
     if (!doc._id && limitPerType > 0) {
         const docs = await dbHistory.search(
-            { recipient, type: rewardType },
+            {
+                recipient,
+                type: rewardType
+            },
             limitPerType,
             0,
             false,
@@ -81,49 +129,53 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     log(rewardId, { amount, balance })
     if (balance < (amount + 1000)) throw new Error('Faucet server: insufficient funds')
 
+    if (doc.status === 'success') return doc
     if (!!doc.txId) {
-        // check transaction status
-        const isStarted = await query(
-            api,
-            api.query
-                .bonsai
-                .isStarted,
-            doc.txId,
-        )
+        let [txStatus, blockStarted] = await checkTxStatus(api, doc.txId)
 
         // transaction already started. Wait 15 seconds to check if it was successful
-        if (isStarted) await PromisE.delay(15000)
+        if (txStatus === 'started') {
+            const currentBlock = await getCurrentBlock(api)
+            // re-attempted too quickly
+            if (blockStarted === currentBlock) {
+                // wait 15 seconds
+                await PromisE.delay(15000)
+                // get status again
+                txStatus = (await checkTxStatus(api, doc.txId))[0]
+            } else {
+                txStatus = 'failed'
+            }
+        }
 
-        // Check if previously initiated tx was successful
-        const success = await query(
-            api,
-            api.query
-                .bonsai
-                .isSuccessful,
-            doc.txId,
-        )
-        doc.status = !!success
-            ? 'success'
-            : doc.status
-        !!success && await dbHistory.set(rewardId, doc)
+        // transaction was previously successful
+        if (txStatus === 'success') {
+            doc.status = txStatus
+            await dbHistory.set(rewardId, doc)
+            return doc
+        }
+        //continue to re-execute the transaction
     }
-
-    if (doc.status === 'success') return doc
 
     // construct a transaction
     doc.txId = randomHex(recipient, 'blake2', 256)
-    const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
 
+    // seta new temporary status so that these can be searched and executed later
+    doc.status = 'todo' // 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
-
-    // execute the transaction
-    const [txHash] = await signAndSend(api, walletAddress, tx)
-    doc.txHash = txHash
-    doc.status = 'success'
-
-    await dbHistory.set(rewardId, doc)
     return doc
+
+    // // execute the treansaction
+    // const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
+
+
+    // // execute the transaction
+    // const [txHash] = await signAndSend(api, walletAddress, tx)
+    // doc.txHash = txHash
+    // doc.status = 'success'
+
+    // await dbHistory.set(rewardId, doc)
+    // return doc
 }
 
 /**
@@ -156,7 +208,11 @@ setTimeout(async () => {
         {
             index: { fields: ['recipient'] },
             name: 'recipient-index',
-        }
+        },
+        {
+            index: { fields: ['status'] },
+            name: 'status-index',
+        },
     ]
     const db = await dbHistory.getDB()
     indexDefs.forEach(def => db.createIndex(def).catch(() => { }))
