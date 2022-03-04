@@ -82,7 +82,7 @@ export const getCurrentBlock = async (api, callback) => {
         try {
             return res.block.header.number
         } catch (e) {
-            console.log('Unexpected error reading block number', e)
+            log('Unexpected error reading block number', e)
             return 0
         }
     }

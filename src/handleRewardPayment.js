@@ -35,13 +35,14 @@ const validationConf = {
 }
 export const handleRewardPayment = async (decryptedData, callback) => {
     if (!isFn(callback)) return
-
+    let id
     try {
         const data = JSON.parse(decryptedData)
         const err = validateObj(data, validationConf, true, true)
         if (err) return callback(err)
 
         const { address, rewardId, rewardType } = data
+        id = rewardId
         const amount = parseInt(rewardAmounts[rewardType])
         // if reward amount is 0 or lower => assume reward type is inactive
         if (!amount || amount < 0) return callback('Reward type no longer available')
