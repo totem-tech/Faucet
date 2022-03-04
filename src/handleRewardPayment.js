@@ -57,7 +57,7 @@ export const handleRewardPayment = async (decryptedData, callback) => {
         )
         callback(null, { amount, status, txId, txHash })
     } catch (err) {
-        log(rewardId, err)
+        log(id, err)
         callback(err.message || err, {})
     }
 }
