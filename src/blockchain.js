@@ -46,6 +46,7 @@ const connect = async (nodeUrl) => {
  */
 const checkTxStatus = async (api, txId) => {
     const [blockStarted = 0, blockSuccess = 0] = await query(
+        api,
         api.queryMulti,
         [[
             [api.query.bonsai.isStarted, txId],
