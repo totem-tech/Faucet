@@ -126,9 +126,6 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
             .length >= limitPerType
         if (limitReached) return {}
     }
-    const balance = await query(api, api.query.balances.freeBalance, [walletAddress])
-    log(rewardId, { amount, balance })
-    if (balance < (amount + 1000)) throw new Error('Faucet server: insufficient funds')
 
     if (doc.status === 'success') return doc
     if (!!doc.txId) {
@@ -165,6 +162,10 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     // save record with pending status
     await dbHistory.set(rewardId, doc)
     return doc
+
+    // const balance = await query(api, api.query.balances.freeBalance, [walletAddress])
+    // log(rewardId, { amount, balance })
+    // if (balance < (amount + 1000)) throw new Error('Faucet server: insufficient funds')
 
     // // execute the treansaction
     // const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
