@@ -44,7 +44,7 @@ const connect = async (nodeUrl) => {
  * 
  * @returns {String}    failed | started | success
  */
-const checkTxStatus = (api, txId) => {
+const checkTxStatus = async (api, txId) => {
     const [blockStarted = 0, blockSuccess = 0] = await query(
         api.queryMulti,
         [[
