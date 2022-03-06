@@ -47,21 +47,23 @@ export const setupVariables = () => {
     encryption_keypair = encryptionKeypair(keyData)
     signature_keypair = signingKeyPair(keyData)
 
-    !keyringSetup && getConnection().then(() => {
-        console.log('Setting up keyring')
-        setupKeyring(wallets)
-    })
-    keyringSetup = true
-}
+    if (!keyringSetup) {
+        if (printSensitiveData) {
+            console.log('serverName: ', serverName, '\n')
+            console.log('keyData: ', keyData, '\n')
+            console.log('wallet.address: ', wallet.address, '\n')
+            console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
+            console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
+            console.log('external_serverName: ', external_serverName)
+            console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
+        }
+        getConnection().then(() => {
+            console.log('Setting up keyring')
+            setupKeyring(wallets)
+        })
 
-if (printSensitiveData) {
-    console.log('serverName: ', serverName, '\n')
-    console.log('keyData: ', keyData, '\n')
-    console.log('wallet.address: ', wallet.address, '\n')
-    console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
-    console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
-    console.log('external_serverName: ', external_serverName)
-    console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
+    }
+    keyringSetup = true
 }
 
 /**

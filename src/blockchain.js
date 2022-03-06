@@ -262,7 +262,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     const execute = async () => {
         // execute the treansaction
         const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
-        const [txHash] = await signAndSend(api, sender, tx)
+        const [txHash] = await signAndSend(api, senderAddress, tx)
             .catch(err => {
                 const count = (senderFails[senderIndex] || 0) + 1
                 senderFails[senderIndex] = count
