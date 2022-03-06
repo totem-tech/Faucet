@@ -16,7 +16,8 @@ let keyData,
     external_signPublicKey,
     external_serverName,
     encryption_keypair,
-    signature_keypair
+    signature_keypair,
+    keyringSetup
 const printSensitiveData = process.env.printSensitiveData === "YES"
 // Reads environment variables and generate keys if needed
 export const setupVariables = () => {
@@ -46,11 +47,11 @@ export const setupVariables = () => {
     encryption_keypair = encryptionKeypair(keyData)
     signature_keypair = signingKeyPair(keyData)
 
-    getConnection().then(() => {
+    !keyringSetup && getConnection().then(() => {
         console.log('Setting up keyring')
         setupKeyring(wallets)
     })
-
+    keyringSetup = true
 }
 
 if (printSensitiveData) {
