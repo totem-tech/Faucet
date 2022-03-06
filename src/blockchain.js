@@ -4,7 +4,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import { getTxFee, keyring, query, signAndSend } from './utils/polkadotHelper'
 import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
-import { generateHash, isValidNumber } from './utils/utils'
+import { generateHash, isFn, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
 import { subjectAsPromise, unsubscribe } from './utils/reactHelper'
 
