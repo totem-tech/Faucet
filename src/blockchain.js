@@ -13,10 +13,12 @@ const dbHistory = new CouchDBStorage(null, 'faucet_history')
 let connectionPromise = null
 const senderAddresses = []
 const senderBalances = []
+const senderFails = []
 let senderInUse
 let readyPromise
 let api, provider, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
+const maxFailCount = parseInt(process.env.MaxFailCount) || 3
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -151,12 +153,17 @@ const getSender = async (amountToSend) => {
     // none of the addresses has enough funds
     if (!gotBalance) throw new Error('Faucet server: insufficient funds')
 
+    const addBanned = senderFails.filter(c => c >= maxFailCount).length === senderAddresses.length
+    if (addBanned) throw new Error('Faucet server: no useable sender addresses available')
+
     await addressAwaitRelease()
     const availableIndexes = senderInUse
         .map((subject, i) =>
-            subject.value < maxTxPerAddress
-                ? i
-                : null
+            senderFails[i] >= maxFailCount // prevent using an address if it failed 3 transactions
+                ? null
+                : subject.value < maxTxPerAddress
+                    ? i
+                    : null
         )
         .filter(x =>
             x !== null
@@ -256,6 +263,14 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         // execute the treansaction
         const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
         const [txHash] = await signAndSend(api, sender, tx)
+            .catch(err => {
+                const count = (senderFails[senderIndex] || 0) + 1
+                senderFails[senderIndex] = count
+                if (count >= maxFailCount) log('Sender failed too many subsequent transactions', senderAddress, count)
+                return Promise.reject(err)
+            })
+        // reset fail count
+        senderFails[senderIndex] = 0
         doc.txHash = txHash
         doc.status = 'success'
         await dbHistory.set(rewardId, doc)
