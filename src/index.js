@@ -2,7 +2,7 @@ import https from 'https'
 import fs from 'fs'
 import socket from 'socket.io'
 import { getConnection } from './blockchain'
-import { decryptMessage } from './decryptMessage'
+import { decryptMessage, setupVariables } from './decryptMessage'
 import { getConnection as setDbConnection } from './utils/CouchDBStorage'
 import { isFn } from './utils/utils'
 import { handleRewardPayment } from './handleRewardPayment'
@@ -22,16 +22,17 @@ const server = https.createServer({
 })
 const io = socket(server)
 const clients = new Map()
+const log = (...args) => console.log(new Date().toISOString(), ...args)
 
 // Authentication middleware: prevent conneting if authentication fails
 // ToDo: use signed message and verify?
 // io.use((socket, next) => {
 //     let token = socket.handshake.query.token //socket.handshake.headers['x-auth-token']
 //     if (token === 'this_is_a_test_token') { //isValid(token)
-//         console.log('Authentication success. Token', token)
+//         log('Authentication success. Token', token)
 //         return next()
 //     }
-//     console.log('Authentication failed. Token', token)
+//     log('Authentication failed. Token', token)
 //     return next(new Error('authentication error'))
 // })
 
@@ -44,7 +45,7 @@ const decryptCb = (eventName, handler) => async function decryptCb(encryptedMsg,
         await handler(decryptedMsg, callback)
     } catch (error) {
         isFn(callback) && callback(`${error}`)
-        console.log({ eventName, error })
+        log({ eventName, error })
     }
 }
 const handlers = {
@@ -58,10 +59,10 @@ Object.keys(handlers)
 // Setup websocket request handlers
 io.on('connection', client => {
     clients.set(client.id, client)
-    console.log(client.id, 'Connected | Total:', clients.size)
+    log(`[WSClient] Connected: ${client.id} | Total: ${clients.size}`)
     client.on('disconnect', () => {
         clients.delete(client.id)
-        console.log(client.id, 'Disconnected | Total:', clients.size)
+        log(`[WSClient] Disconnected: ${client.id} | Total: ${clients.size}`)
     })
 
     // Keep legacy faucet requsts active until production messaging serivce is updated to latest 
@@ -73,19 +74,22 @@ io.on('connection', client => {
         )
 })
 
-// Start server
-server.listen(FAUCET_PORT, () => {
-    console.log('\nFaucet server websocket listening on port ', FAUCET_PORT)
-})
+// setup CouchDB connection
+setDbConnection(CouchDB_URL, true)
+    .catch(err => Promise.reject('CouchDB setup failed' + err.message))
 
 // connect to blockchain
 getConnection(NODE_URL)
+    .then(() => {
+        // Set variables on start
+        const err = setupVariables()
+        if (err) throw new Error(err)
+        // Start server
+        server.listen(FAUCET_PORT, () => {
+            log('\nFaucet server websocket listening on port ', FAUCET_PORT)
+        })
+    })
     .catch((err) => {
         console.error('Blockchain connection failed! Error:\n', err)
         exit(1)
     })
-// .finally(() => { })
-
-// setup CouchDB connection
-setDbConnection(CouchDB_URL, true)
-    .catch(err => console.log('CouchDB setup failed', err))

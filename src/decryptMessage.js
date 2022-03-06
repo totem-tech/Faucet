@@ -19,7 +19,7 @@ let keyData,
     signature_keypair
 const printSensitiveData = process.env.printSensitiveData === "YES"
 // Reads environment variables and generate keys if needed
-const setupVariables = () => {
+export const setupVariables = () => {
 
     serverName = process.env.serverName
     if (!serverName) return 'Missing environment variable: "serverName"'
@@ -46,14 +46,12 @@ const setupVariables = () => {
     encryption_keypair = encryptionKeypair(keyData)
     signature_keypair = signingKeyPair(keyData)
 
-    console.log('Setting up keyring')
-    wallets.filter(w => !!w.address)
-        .forEach(w => setupKeyring(w))
+    getConnection().then(() => {
+        console.log('Setting up keyring')
+        setupKeyring(wallets)
+    })
 
 }
-// Set variables on start
-const err = setupVariables()
-if (err) throw new Error(err)
 
 if (printSensitiveData) {
     console.log('serverName: ', serverName, '\n')
