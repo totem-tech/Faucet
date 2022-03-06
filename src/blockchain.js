@@ -295,6 +295,8 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
  * @returns {Boolean}
  */
 export const setupKeyring = async (wallets = []) => {
+    if (setupKeyring.done) return
+    setupKeyring.done = true
     let readyCount = 0
     const total = wallets.length
     senderInUse = new Array(wallets.length)
