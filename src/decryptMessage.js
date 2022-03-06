@@ -7,6 +7,7 @@ import {
     verifySignature,
     keyInfoFromKeyData,
 } from './utils/naclHelper'
+import { arrUnique } from './utils/utils'
 
 let keyData,
     wallet,
@@ -35,11 +36,20 @@ const setupVariables = () => {
 
     // Prevent generating keys when not needed
     if (keyData === process.env.keyData) return
+
     // Key pairs of this server
-    keyData = process.env.keyData
-    wallet = keyInfoFromKeyData(keyData)
+    let wallets = arrUnique(process.env.keyData.split(','))
+        .filter(Boolean)
+    keyData = wallets[0]
+    wallets = wallets.map(w => keyInfoFromKeyData(w))
+    wallet = wallets[0]//keyInfoFromKeyData(keyData)
     encryption_keypair = encryptionKeypair(keyData)
     signature_keypair = signingKeyPair(keyData)
+
+    console.log('Setting up keyring')
+    wallets.filter(w => !!w.address)
+        .forEach(w => setupKeyring(w))
+
 }
 // Set variables on start
 const err = setupVariables()
@@ -54,9 +64,6 @@ if (printSensitiveData) {
     console.log('external_serverName: ', external_serverName)
     console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
 }
-
-console.log('Setting up keyring')
-setupKeyring(wallet)
 
 /**
  * @name    decryptMessage

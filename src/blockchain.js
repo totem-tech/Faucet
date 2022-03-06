@@ -1,16 +1,19 @@
 import uuid from 'uuid'
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import { keyring, query, signAndSend } from './utils/polkadotHelper'
+import { getTxFee, keyring, query, signAndSend } from './utils/polkadotHelper'
 import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
-import { generateHash } from './utils/utils'
+import { generateHash, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
 
 // Environment variables
 const dbHistory = new CouchDBStorage(null, 'faucet_history')
 let connectionPromise = null
-let walletAddress = null
-let api, provider
+const senderAddresses = []
+const senderBalances = []
+const senderInUse = []
+let lastIndex = -1
+let api, provider, txFee
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -29,6 +32,7 @@ const connect = async (nodeUrl) => {
         api.rpc.system.version()
     ])
 
+    await api.isReady
     log(`Connected to "${chain}" using "${nodeName}" v${nodeVersion}`)
     return {
         api,
@@ -63,12 +67,10 @@ const checkTxStatus = async (api, txId) => {
 }
 
 export const getConnection = async (nodeUrl) => {
-    if (!connectionPromise) {
-        connectionPromise = await connect(nodeUrl)
-    }
-    await api.isReady
+    connectionPromise = connectionPromise || connect(nodeUrl)
     return await connectionPromise
 }
+
 /**
  * @name    getCurrentBlock
  * @summary get current block number
@@ -77,7 +79,8 @@ export const getConnection = async (nodeUrl) => {
  * 
  * @returns {Number|Function} latest block number if `@callback` not supplied, otherwise, function to unsubscribe
  */
-export const getCurrentBlock = async (api, callback) => {
+export const getCurrentBlock = async (callback) => {
+    if (!api) await connectionPromise
     if (!isFn(callback)) {
         const res = await query(api, 'api.rpc.chain.getBlock')
         try {
@@ -88,6 +91,45 @@ export const getCurrentBlock = async (api, callback) => {
         }
     }
     return query(api, 'api.rpc.chain.subscribeNewHeads', [res => callback(res.number)])
+}
+
+const getSender = async (amountToSend, retry = senderAddresses.length) => {
+    await getConnection()
+
+    const len = senderAddresses.length
+    if (len === 0) throw new Error('No sender wallet found!')
+
+    lastIndex = len === 1
+        || lastIndex === -1
+        || lastIndex + 1 >= len
+        ? 0
+        : lastIndex + 1
+    // console.log({ lastIndex })
+    let address = senderAddresses[lastIndex]
+    // get an estimated txFee for transfer amounts
+    if (!txFee) {
+        txFee = getTxFee(
+            api,
+            address,
+            await api.tx.transfer.networkCurrency(
+                address,
+                1000000,
+                randomHex(),
+            ),
+        )
+    }
+    const amountRequired = amountToSend + await txFee
+    const balance = await senderBalances[lastIndex]
+    const gotBalance = balance > amountRequired
+    // console.log({ txFee, amountRequired, balance, address })
+    if (!gotBalance) {
+        address = null
+        if (retry > 1) {
+            address = await getSender(amountToSend, --retry)
+        }
+    }
+    if (!address && !retry) throw new Error('Faucet server: insufficient funds')
+    return address
 }
 
 /**
@@ -161,23 +203,26 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     doc.status = 'todo' // 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
-    return doc
-
-    // const balance = await query(api, api.query.balances.freeBalance, [walletAddress])
-    // log(rewardId, { amount, balance })
-    // if (balance < (amount + 1000)) throw new Error('Faucet server: insufficient funds')
-
-    // // execute the treansaction
-    // const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
-
-
-    // // execute the transaction
-    // const [txHash] = await signAndSend(api, walletAddress, tx)
-    // doc.txHash = txHash
-    // doc.status = 'success'
-
-    // await dbHistory.set(rewardId, doc)
     // return doc
+
+    const senderAddress = await getSender()
+    const balance = await query(api, api.query.balances.freeBalance, [senderAddress])
+    log(rewardId, {
+        amount,
+        senderAddress,
+        balance: senderBalances[senderAddresses.indexOf(senderAddress)],
+    })
+    // execute the treansaction
+    const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
+
+
+    // execute the transaction
+    const [txHash] = await signAndSend(api, sender, tx)
+    doc.txHash = txHash
+    doc.status = 'success'
+
+    await dbHistory.set(rewardId, doc)
+    return doc
 }
 
 /**
@@ -192,9 +237,32 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
  * @returns {Boolean}
  */
 export const setupKeyring = async (wallet = {}) => {
+    if (senderAddresses.indexOf(wallet.address) >= 0) return
+    console.log(wallet.address)
     await keyring.add([wallet])
     const { address } = wallet
-    walletAddress = address
+    const index = senderAddresses.push(address) - 1
+
+    // subscribe to keep track of address balances
+    await getConnection()
+    let balance
+    senderBalances[index] = new Promise(async (resolve) => {
+        do {
+            await PromisE.delay(1000)
+        } while (!isValidNumber(balance))
+        resolve(balance)
+    })
+    await query(
+        api,
+        api.query.balances.freeBalance,
+        [
+            address,
+            newBalance => {
+                if (!!balance) getSender(100000).then(console.log)
+                balance = newBalance
+                senderBalances[index] = balance
+            },
+        ])
     return keyring.contains(address)
 }
 
