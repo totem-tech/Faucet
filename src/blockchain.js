@@ -19,7 +19,7 @@ let readyPromise, currentBlock
 let api, provider, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
-const senderNonce = {}
+const senderNonce = []
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -209,6 +209,11 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         type: rewardType,
     }
 
+    if (process.env.TEST_RCIPIENT) {
+        recipient = process.env.TEST_RCIPIENT
+        doc.recipient = recipient
+    }
+
     // new entry => check if reward limit per address has already reached
     // if (!doc._id && limitPerType > 0) {
     //     const docs = await dbHistory.search(
@@ -270,9 +275,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     log(rewardId, 'Awaiting sender allocation')
     const senderAddress = await getSender(amount)
     const senderIndex = senderAddresses.indexOf(senderAddress)
-    const nonce = senderNonce[senderIndex] + 1
-    senderNonce[senderIndex] = nonce
-    recipient = '5EJJJ3ajBFdKgatCNyD6WDhLz7jERS8yQf2yxQsshaXzWjhr'
+    const nonce = undefined
     log(rewardId, 'Sender allocated', {
         amount,
         balance: senderBalances[senderIndex],
