@@ -244,10 +244,10 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         // transaction already started. Wait 15 seconds to check if it was successful
         if (txStatus === 'started') {
             // re-attempted too quickly
-            if (blockStarted === currentBlock) {
+            if (blockStarted <= currentBlock + 100) {
                 doc.status = 'todo'
                 await dbHistory.set(rewardId, doc)
-                log(rewardId, 'Re-attempt to quickly', { blockStarted, currentBlock })
+                log(rewardId, 'Re-attempted to quickly', { blockStarted, currentBlock })
                 return
             } else {
                 txStatus = 'failed'
@@ -303,7 +303,10 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     // execute the transaction
     const sendPromise = execute()
     await sendPromise
-        .finally(() => addressRelease(senderIndex))
+        .finally(() =>
+            // wait 1 second before releasing the address
+            setTimeout(() => addressRelease(senderIndex), 1000)
+        )
     return doc
 }
 
