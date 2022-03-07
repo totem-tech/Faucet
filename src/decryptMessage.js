@@ -16,12 +16,10 @@ let keyData,
     external_signPublicKey,
     external_serverName,
     encryption_keypair,
-    signature_keypair,
-    keyringSetup
+    signature_keypair
 const printSensitiveData = process.env.printSensitiveData === "YES"
 // Reads environment variables and generate keys if needed
-export const setupVariables = () => {
-
+export const setupVariables = (nodeUrl) => {
     serverName = process.env.serverName
     if (!serverName) return 'Missing environment variable: "serverName"'
 
@@ -47,23 +45,25 @@ export const setupVariables = () => {
     encryption_keypair = encryptionKeypair(keyData)
     signature_keypair = signingKeyPair(keyData)
 
-    if (!keyringSetup) {
-        if (printSensitiveData) {
-            console.log('serverName: ', serverName, '\n')
-            console.log('keyData: ', keyData, '\n')
-            console.log('wallet.address: ', wallet.address, '\n')
-            console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
-            console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
-            console.log('external_serverName: ', external_serverName)
-            console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
-        }
-        getConnection().then(() => {
+    if (printSensitiveData) {
+        console.log('serverName: ', serverName, '\n')
+        console.log('keyData: ', keyData, '\n')
+        console.log('wallet.address: ', wallet.address, '\n')
+        console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
+        console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
+        console.log('external_serverName: ', external_serverName)
+        console.log('external_publicKey base64 encoded: ', external_publicKey, '\n')
+    }
+    if (nodeUrl) return getConnection(nodeUrl)
+        .then(() => {
             console.log('Setting up keyring')
-            setupKeyring(wallets)
+            return setupKeyring(wallets)
+        })
+        .catch((err) => {
+            console.error('Blockchain connection failed! Error:\n', err)
+            process.exit(1)
         })
 
-    }
-    keyringSetup = true
 }
 
 /**

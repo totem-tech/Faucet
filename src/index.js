@@ -1,7 +1,6 @@
 import https from 'https'
 import fs from 'fs'
 import socket from 'socket.io'
-import { getConnection } from './blockchain'
 import { decryptMessage, setupVariables } from './decryptMessage'
 import { getConnection as setDbConnection } from './utils/CouchDBStorage'
 import { isFn } from './utils/utils'
@@ -82,17 +81,11 @@ setDbConnection(CouchDB_URL, true)
     .catch(err => Promise.reject('CouchDB setup failed' + err.message))
 
 // connect to blockchain
-getConnection(NODE_URL)
+// Set variables on start
+setupVariables(NODE_URL)
     .then(() => {
-        // Set variables on start
-        const err = setupVariables()
-        if (err) throw new Error(err)
         // Start server
         server.listen(FAUCET_PORT, () => {
-            log('\nFaucet server websocket listening on port ', FAUCET_PORT)
+            console.log('------------------------\nFaucet server websocket listening on port ', FAUCET_PORT)
         })
-    })
-    .catch((err) => {
-        console.error('Blockchain connection failed! Error:\n', err)
-        exit(1)
     })

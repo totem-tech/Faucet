@@ -6,7 +6,7 @@ import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
 import { generateHash, isFn, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
-import { subjectAsPromise, unsubscribe } from './utils/reactHelper'
+import { subjectAsPromise } from './utils/reactHelper'
 
 // Environment variables
 const dbHistory = new CouchDBStorage(null, 'faucet_history')
@@ -15,10 +15,11 @@ const senderAddresses = []
 const senderBalances = []
 const senderFails = []
 let senderInUse
-let readyPromise
+let readyPromise, currentBlock
 let api, provider, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
+const senderNonce = {}
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -40,7 +41,8 @@ const addressAwaitRelease = async () => {
     const promises = senderInUse.map((subject, i) =>
         subjectAsPromise(
             subject,
-            maxTxPerAddress - 1, // resolves when address becomes available
+            // resolves when address becomes available
+            numTx => numTx < maxTxPerAddress && numTx,
         )
     )
     // wait for any address to become available
@@ -95,21 +97,23 @@ const connect = async (nodeUrl) => {
  * @returns {String}    failed | started | success
  */
 const checkTxStatus = async (api, txId) => {
-    const [blockStarted = 0, blockSuccess = 0] = await query(
+    const blockSuccess = await query(
         api,
-        api.queryMulti,
-        [[
-            [api.query.bonsai.isStarted, txId],
-            [api.query.bonsai.isSuccessful, txId],
-        ]],
+        api.query.bonsai.isSuccessful,
+        [txId],
+    )
+    const blockStarted = blockSuccess || await query(
+        api,
+        api.query.bonsai.isStarted,
+        [txId],
     )
 
-    const status = !blockSuccess
-        ? blockStarted
+    const status = blockSuccess
+        ? 'success'
+        : blockStarted
             ? 'started'
             : 'failed'
-        : 'success'
-    return [status, blockStarted, blockSuccess]
+    return [status, blockStarted || 0, blockSuccess || 0]
 }
 
 export const getConnection = async (nodeUrl) => {
@@ -153,8 +157,8 @@ const getSender = async (amountToSend) => {
     // none of the addresses has enough funds
     if (!gotBalance) throw new Error('Faucet server: insufficient funds')
 
-    const addBanned = senderFails.filter(c => c >= maxFailCount).length === senderAddresses.length
-    if (addBanned) throw new Error('Faucet server: no useable sender addresses available')
+    const allBanned = senderFails.filter(c => c >= maxFailCount).length === senderAddresses.length
+    if (allBanned) throw new Error('Faucet server: no useable sender addresses available')
 
     await addressAwaitRelease()
     const availableIndexes = senderInUse
@@ -176,6 +180,13 @@ const getSender = async (amountToSend) => {
     return address
 }
 
+setTimeout(() =>
+    getConnection().then(() =>
+        readyPromise.then(() => getSender(100))
+    ), 2000
+)
+
+
 /**
  * @name randomHex
  * @summary generates a hash using the supplied address and a internally generated time based UUID as seed.
@@ -191,7 +202,6 @@ const randomIndex = max => parseInt(Math.random(max) * max)
 export const transfer = async (recipient, amount, rewardId, rewardType, limitPerType = 0) => {
     // connect to blockchain
     const { api } = await getConnection()
-    await readyPromise
     const doc = await dbHistory.get(rewardId) || {
         amount,
         recipient,
@@ -199,36 +209,41 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         type: rewardType,
     }
 
-    // new entry
-    if (!doc._id && limitPerType > 0) {
-        const docs = await dbHistory.search(
-            {
-                recipient,
-                type: rewardType
-            },
-            limitPerType,
-            0,
-            false,
-        )
-        const limitReached = docs
-            .filter(({ _id }) => _id != rewardId)
-            .length >= limitPerType
-        if (limitReached) return {}
-    }
+    // new entry => check if reward limit per address has already reached
+    // if (!doc._id && limitPerType > 0) {
+    //     const docs = await dbHistory.search(
+    //         {
+    //             recipient,
+    //             type: rewardType
+    //         },
+    //         limitPerType,
+    //         0,
+    //         false,
+    //     )
+    //     const limitReached = docs
+    //         .filter(({ _id }) => _id != rewardId)
+    //         .length >= limitPerType
+    //     if (limitReached) {
+    //         return {}
+    //     }
+    // }
 
-    if (doc.status === 'success') return doc
+    if (doc.status === 'success') {
+        log(rewardId, 'rewards previously completed')
+        return doc
+    }
     if (!!doc.txId) {
+        log(rewardId, 'Checking existing tx status')
         let [txStatus, blockStarted] = await checkTxStatus(api, doc.txId)
 
         // transaction already started. Wait 15 seconds to check if it was successful
         if (txStatus === 'started') {
-            const currentBlock = await getCurrentBlock(api)
             // re-attempted too quickly
             if (blockStarted === currentBlock) {
-                // wait 15 seconds
-                await PromisE.delay(15000)
-                // get status again
-                txStatus = (await checkTxStatus(api, doc.txId))[0]
+                doc.status = 'todo'
+                await dbHistory.set(rewardId, doc)
+                log(rewardId, 'Re-attempt to quickly', { blockStarted, currentBlock })
+                return
             } else {
                 txStatus = 'failed'
             }
@@ -238,6 +253,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         if (txStatus === 'success') {
             doc.status = txStatus
             await dbHistory.set(rewardId, doc)
+            log(rewardId, 'TX previously completed')
             return doc
         }
         //continue to re-execute the transaction
@@ -247,22 +263,27 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     doc.txId = randomHex(recipient, 'blake2', 256)
 
     // seta new temporary status so that these can be searched and executed later
-    doc.status = 'todo' // 'pending'
+    doc.status = 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
-    // return doc
 
+    log(rewardId, 'Awaiting sender allocation')
     const senderAddress = await getSender(amount)
     const senderIndex = senderAddresses.indexOf(senderAddress)
-    log(rewardId, {
+    const nonce = senderNonce[senderIndex] + 1
+    senderNonce[senderIndex] = nonce
+    recipient = '5EJJJ3ajBFdKgatCNyD6WDhLz7jERS8yQf2yxQsshaXzWjhr'
+    log(rewardId, 'Sender allocated', {
         amount,
-        senderAddress,
         balance: senderBalances[senderIndex],
+        nonce,
+        senderAddress,
+        recipient,
     })
     const execute = async () => {
         // execute the treansaction
         const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
-        const [txHash] = await signAndSend(api, senderAddress, tx)
+        const [txHash] = await signAndSend(api, senderAddress, tx, nonce)
             .catch(err => {
                 const count = (senderFails[senderIndex] || 0) + 1
                 senderFails[senderIndex] = count
@@ -297,22 +318,34 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
 export const setupKeyring = async (wallets = []) => {
     if (setupKeyring.done) return
     setupKeyring.done = true
-    let readyCount = 0
+    let ready = {}
     const total = wallets.length
     senderInUse = new Array(wallets.length)
         .fill(0)
         .map(() => new BehaviorSubject(0))
     readyPromise = new Promise(async (resolve) => {
+        let readyCount = 0
         do {
             await PromisE.delay(1000)
-        } while (readyCount < total)
+            readyCount = Object
+                .values(ready)
+                .flat()
+                .filter(Boolean)
+        } while (readyCount < total * 2)
         resolve(true)
     })
+    getCurrentBlock(num => currentBlock = num)
     for (let i = 0; i < total; i++) {
+        if (senderAddresses.includes(address)) return
+
         const wallet = wallets[i]
         if (senderAddresses.indexOf(wallet.address) >= 0) return
         await keyring.add([wallet])
         const { address } = wallet
+        ready[address] = {
+            balance: false,
+            nonce: false,
+        }
         const index = senderAddresses.push(address) - 1
 
         // subscribe to keep track of address balances
@@ -323,10 +356,19 @@ export const setupKeyring = async (wallets = []) => {
                 address,
                 balance => {
                     senderBalances[index] = balance
-                    ++readyCount
-                    log(`Wallet ready ${readyCount}/${total} ${address}`)
+                    ready[address].balance = true
+                    log(`Wallet balance ready ${i + 1}/${total} ${address}`, balance)
                 },
             ])
+        const nonce = await query(
+            api,
+            api.query.system.accountNonce,
+            [address],
+        )
+
+        senderNonce[index] = nonce || 0
+        ready[address].nonce = true
+        log(`Wallet nonce ready ${i + 1}/${total} ${address}`, nonce)
     }
 
     // Test address release and locking mechanism
@@ -340,6 +382,7 @@ export const setupKeyring = async (wallets = []) => {
     //             console.log(i, senderBalances[index], sender)
     //         })
     // })
+    return await readyPromise
 }
 
 
