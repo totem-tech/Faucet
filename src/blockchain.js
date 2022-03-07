@@ -288,7 +288,9 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
         const [txHash] = await signAndSend(api, senderAddress, tx, nonce, null, senderAddress)
             .catch(err => {
-                const count = (senderFails[senderIndex] || 0) + 1
+                const count = `${err}`.includes('Priority')
+                    ? maxFailCount
+                    : (senderFails[senderIndex] || 0) + 1
                 senderFails[senderIndex] = count
                 if (count >= maxFailCount) log('Sender failed too many subsequent transactions', senderAddress, count)
                 return Promise.reject(err)
@@ -296,7 +298,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         // reset fail count
         senderFails[senderIndex] = 0
         doc.txHash = txHash
-        doc.status = 'success'
+        doc.status = !!txHash ? 'success' : 'error'
         await dbHistory.set(rewardId, doc)
     }
 
