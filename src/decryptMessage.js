@@ -38,6 +38,7 @@ export const setupVariables = (nodeUrl) => {
 
     // Key pairs of this server
     let wallets = arrUnique(process.env.keyData.split(','))
+        .map(x => x.trim())
         .filter(Boolean)
     keyData = wallets[0]
     wallets = wallets.map(w => keyInfoFromKeyData(w))

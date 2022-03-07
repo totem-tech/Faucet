@@ -10,6 +10,7 @@ const rewardAmounts = {
     'signup-twitter-reward': process.env.signupTwitterRewardAmount,
 }
 let requestCount = 0
+const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'YES'
 
 // number of maximum reward payout per address for specific reward types
 // 0 means unlimited
@@ -34,6 +35,7 @@ const validationConf = {
         type: TYPES.string,
     },
 }
+
 export const handleRewardPayment = async (decryptedData, callback) => {
     if (!isFn(callback)) return
     let id
@@ -48,16 +50,25 @@ export const handleRewardPayment = async (decryptedData, callback) => {
         // if reward amount is 0 or lower => assume reward type is inactive
         if (!amount || amount < 0) return callback('Reward type no longer available')
 
-        log('Request inprogress count:', ++requestCount)
-        log(rewardId, { address, amount, rewardType })
-        const { status, txId, txHash } = await transfer(
-            address,
-            amount,
-            rewardId,
-            rewardType,
-            rewardLimits[rewardType],
-        )
-        callback(null, { amount, status, txId, txHash })
+        const execute = async () => {
+            log('Request inprogress count:', ++requestCount)
+            log(rewardId, { address, amount, rewardType })
+            const { status, txId, txHash } = await transfer(
+                address,
+                amount,
+                rewardId,
+                rewardType,
+                rewardLimits[rewardType],
+            )
+            callback(null, { amount, status, txId, txHash })
+        }
+        if (!silectExecution) {
+            await execute()
+        } else {
+            // let the execution continue in the background and respond immediately
+            execute()
+            return callback(null, { status: 'todo' })
+        }
     } catch (err) {
         log({ id, err })
         callback(err.message || err, {})
