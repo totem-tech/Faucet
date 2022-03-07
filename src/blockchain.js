@@ -4,12 +4,20 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import { getTxFee, keyring, query, signAndSend } from './utils/polkadotHelper'
 import types from './utils/totem-polkadot-js-types'
 import CouchDBStorage from './utils/CouchDBStorage'
+import DataStorage from './utils/DataStorage'
 import { generateHash, isFn, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
 import { subjectAsPromise } from './utils/reactHelper'
+import { ss58Decode, ss58Encode } from './utils/convert'
 
 // Environment variables
 const dbHistory = new CouchDBStorage(null, 'faucet_history')
+const sendersIgnored = new Map(
+    new DataStorage('addresses-ignored.json')
+        .toArray()
+        .map(([address, ignore]) => ignore && [address, ignore])
+        .filter(Boolean)
+)
 let connectionPromise = null
 const senderAddresses = []
 const senderBalances = []
@@ -154,6 +162,7 @@ const getSender = async (amountToSend) => {
     await getConnection()
     const amountRequired = amountToSend + (txFee || 0)
     const gotBalance = senderBalances.find(balance => balance > amountRequired)
+    await readyPromise
     // none of the addresses has enough funds
     if (!gotBalance) throw new Error('Faucet server: insufficient funds')
 
@@ -179,12 +188,6 @@ const getSender = async (amountToSend) => {
     addressLock(index)
     return address
 }
-
-setTimeout(() =>
-    getConnection().then(() =>
-        readyPromise.then(() => getSender(100))
-    ), 2000
-)
 
 
 /**
@@ -327,10 +330,14 @@ export const setupKeyring = async (wallets = []) => {
     if (setupKeyring.done) return
     setupKeyring.done = true
     let ready = {}
+    if (sendersIgnored.size > 0) {
+        wallets = wallets.filter(w => !sendersIgnored.get(w.address))
+    }
     const total = wallets.length
-    senderInUse = new Array(wallets.length)
+    senderInUse = new Array(total)
         .fill(0)
         .map(() => new BehaviorSubject(0))
+
     readyPromise = new Promise(async (resolve) => {
         let readyCount = 0
         do {
@@ -342,14 +349,18 @@ export const setupKeyring = async (wallets = []) => {
         } while (readyCount < total * 2)
         resolve(true)
     })
-    getCurrentBlock(num => currentBlock = num)
-    for (let i = 0; i < total; i++) {
-        if (senderAddresses.includes(address)) return
 
+    getCurrentBlock(num => currentBlock = num)
+
+    console.log({ total })
+    for (let i = 0; i < total; i++) {
         const wallet = wallets[i]
-        if (senderAddresses.indexOf(wallet.address) >= 0) return
         await keyring.add([wallet])
+
         const { address } = wallet
+        /// already added
+        if (senderAddresses.includes(address)) continue
+
         ready[address] = {
             balance: false,
             nonce: false,

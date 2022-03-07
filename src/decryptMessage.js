@@ -57,11 +57,7 @@ export const setupVariables = (nodeUrl) => {
     if (nodeUrl) return getConnection(nodeUrl)
         .then(() => {
             console.log('Setting up keyring')
-            return setupKeyring(
-                wallets.length === 0
-                    ? wallets
-                    : wallets.slice(1),
-            )
+            return setupKeyring(wallets)
         })
         .catch((err) => {
             console.error('Blockchain connection failed! Error:\n', err)
