@@ -50,6 +50,9 @@ const decryptCb = (eventName, handler) => async function decryptCb(encryptedMsg,
 }
 const handlers = {
     'reward-payment': handleRewardPayment,
+    'test-decrypt': (msg, callback) => {
+        isFn(callback) && callback(null, JSON.parse(msg))
+    }
 }
 Object.keys(handlers)
     .forEach(name =>
