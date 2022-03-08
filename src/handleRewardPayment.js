@@ -81,10 +81,14 @@ export const reprocessRewards = async () => {
         false,
         { sort: ['tsCreated'] },
     )
+    let countBatchDone = 0
+    let countBatchError = 0
     await Promise.all(result.map(async (entry, index) => {
         try {
             count++
-            log(rewardId, 'Reprocessing', { count, index, address, amount, rewardType })
+            log(rewardId, 'Reprocessing', {
+                index, address, amount, rewardType, count,
+            })
             const {
                 _id: rewardId,
                 amount,
@@ -98,15 +102,19 @@ export const reprocessRewards = async () => {
                 rewardType,
                 true,
             )
-            log(rewardId, { count, status, txId, txHash })
+            countBatchDone++
+            log(rewardId, {
+                index, count, countBatchDone, countBatchError, status, txId, txHash,
+            })
             if (status === 'success' && txHash) success++
         } catch (error) {
-            console.log(rewardId, { count, error })
+            countBatchError++
+            console.log(rewardId, { index, count, countBatchDone, countBatchError, error })
         }
     })).catch(console.error)
     if (result.length >= limit) return reprocessRewards()
     log('Reprocessing finished: ', {
-        count,
+        count: count,
         success,
         fail: count - success,
     })
