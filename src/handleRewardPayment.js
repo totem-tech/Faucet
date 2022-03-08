@@ -84,15 +84,15 @@ export const reprocessRewards = async () => {
         if (!result.length || !isObj(result[0])) {
             done = true
         }
-        for (let i = 0; i < result.length; i++) {
+        const promise = Promise.all(result.map(async (entry) => {
             count++
             const {
                 _id: rewardId,
                 amount,
                 recipient: address,
                 type: rewardType,
-            } = result[i]
-            log(rewardId, 'Reprocessing', { address, amount, rewardType })
+            } = entry
+            log(rewardId, 'Reprocessing', { count, address, amount, rewardType })
             const { status, txId, txHash } = await transfer(
                 address,
                 amount,
@@ -102,7 +102,8 @@ export const reprocessRewards = async () => {
             )
             log(rewardId, { status, txId, txHash })
             if (status === 'success' && txHash) success++
-        }
+        }))
+        await promise.catch(console.error)
     } while (!done)
     log('Reprocessing finished: ', {
         count,
