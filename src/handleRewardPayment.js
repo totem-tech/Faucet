@@ -1,7 +1,8 @@
-import { log, transfer } from './blockchain'
-import { isFn } from './utils/utils'
+import { dbHistory, getConnection, log, saveOnly, senderAddresses, sendersIgnored, transfer } from './blockchain'
+import { isFn, isObj } from './utils/utils'
 import { TYPES, validateObj } from './utils/validator'
 
+const reprocessRewards = (process.env.ReprocessRewards || '').toLowerCase() === 'yes'
 // reward amounts for each valid reward
 const rewardAmounts = {
     'referral-reward': process.env.referralRewardAmount,
@@ -56,7 +57,6 @@ export const handleRewardPayment = async (decryptedData, callback) => {
             amount,
             rewardId,
             rewardType,
-            rewardLimits[rewardType],
         )
         callback(null, { amount, status, txId, txHash })
     } catch (err) {
@@ -65,3 +65,48 @@ export const handleRewardPayment = async (decryptedData, callback) => {
     }
     log('Request count:', --requestCount)
 }
+
+reprocessRewards && !saveOnly && setTimeout(async () => {
+    await getConnection()
+    let done = false
+    let count = 0
+    let success = 0
+    const limit = senderAddresses.filter(x => !sendersIgnored.get(x)).length
+    log('Reprocessing limit per query: ', limit)
+    if (!limit) return
+    do {
+        const result = await dbHistory.search(
+            { status: 'todo' },
+            1,
+            0,
+            false,
+            { sort: ['tsCreated'] },
+        )
+        if (!result.length || !isObj(result[0])) {
+            done = true
+        }
+        for (let i = 0; i < result.length; i++) {
+            count++
+            const {
+                _id: rewardId,
+                amount,
+                recipient: address,
+                type: rewardType,
+            } = result[i]
+            log(rewardId, 'Reprocessing', { address, amount, rewardType })
+            const { status, txId, txHash } = await transfer(
+                address,
+                amount,
+                rewardId,
+                rewardType,
+            )
+            log(rewardId, { status, txId, txHash })
+            if (status === 'success' && txHash) success++
+        }
+    } while (!done)
+    log('Reprocessing finished: ', {
+        count,
+        success,
+        fail: count - success,
+    })
+}, 2000)

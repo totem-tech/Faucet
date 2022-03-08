@@ -10,15 +10,15 @@ import PromisE from './utils/PromisE'
 import { subjectAsPromise } from './utils/reactHelper'
 
 // Environment variables
-const dbHistory = new CouchDBStorage(null, 'faucet_history')
-const sendersIgnored = new Map(
+export const dbHistory = new CouchDBStorage(null, 'faucet_history')
+export const sendersIgnored = new Map(
     new DataStorage('addresses-ignored.json')
         .toArray()
         .map(([address, ignore]) => ignore && [address, ignore])
         .filter(Boolean)
 )
 let connectionPromise = null
-const senderAddresses = []
+export const senderAddresses = []
 const senderBalances = []
 const senderFails = []
 const senderNonce = []
@@ -26,8 +26,8 @@ let senderInUse = []
 let api, currentBlock, provider, readyPromise, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
-const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'yes'
-const saveOnly = (process.env.SAVE_ONLY || '').toLowerCase() === 'yes'
+export const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'yes'
+export const saveOnly = (process.env.SAVE_ONLY || '').toLowerCase() === 'yes'
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -202,7 +202,7 @@ export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 
 const randomIndex = max => parseInt(Math.random(max) * max)
 
-export const transfer = async (recipient, amount, rewardId, rewardType, limitPerType = 0) => {
+export const transfer = async (recipient, amount, rewardId, rewardType, doExecuteTx = false) => {
     // connect to blockchain
     const { api } = await getConnection()
     const doc = await dbHistory.get(rewardId) || {
@@ -276,7 +276,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
         : 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
-    if (saveOnly) return doc
+    if (!doExecuteTx && saveOnly) return doc
 
     log(rewardId, 'Awaiting sender allocation')
     const senderAddress = await getSender(amount)
