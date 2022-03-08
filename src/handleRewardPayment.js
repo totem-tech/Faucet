@@ -99,6 +99,7 @@ reprocessRewards && !saveOnly && setTimeout(async () => {
                 amount,
                 rewardId,
                 rewardType,
+                true,
             )
             log(rewardId, { status, txId, txHash })
             if (status === 'success' && txHash) success++
