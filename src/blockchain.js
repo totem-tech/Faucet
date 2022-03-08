@@ -27,7 +27,7 @@ let senderInUse = []
 let api, currentBlock, provider, readyPromise, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
-const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'YES'
+const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'yes'
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
