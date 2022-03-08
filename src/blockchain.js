@@ -271,7 +271,9 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     doc.txId = randomHex(recipient, 'blake2', 256)
 
     // seta new temporary status so that these can be searched and executed later
-    doc.status = 'pending'
+    doc.status = silectExecution
+        ? 'todo'
+        : 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
 
