@@ -109,4 +109,7 @@ export const reprocessRewards = async () => {
         success,
         fail: count - success,
     })
+
+    // check after 5 minutes if there is any more reward entries
+    setTimeout(reprocessRewards, 5 * 60 * 1000)
 }
