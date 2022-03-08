@@ -86,7 +86,7 @@ export const reprocessRewards = async () => {
     await Promise.all(result.map(async (entry, index) => {
         try {
             count++
-            log(rewardId, 'Reprocessing', {
+            log(entry._id, 'Reprocessing', {
                 index, address, amount, rewardType, count,
             })
             const {
