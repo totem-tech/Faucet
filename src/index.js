@@ -4,7 +4,7 @@ import socket from 'socket.io'
 import { decryptMessage, setupVariables } from './decryptMessage'
 import { getConnection as setDbConnection } from './utils/CouchDBStorage'
 import { isFn } from './utils/utils'
-import { handleRewardPayment } from './handleRewardPayment'
+import { handleRewardPayment, reprocessRewards } from './handleRewardPayment'
 
 // Environment variables
 const {
@@ -84,6 +84,11 @@ setDbConnection(CouchDB_URL, true)
 // Set variables on start
 setupVariables(NODE_URL)
     .then(() => {
+        (process.env.ReprocessRewards || '')
+            .toLowerCase() === 'yes'
+            && reprocessRewards()
+
+
         // Start server
         server.listen(FAUCET_PORT, () => {
             console.log('------------------------\nFaucet server websocket listening on port ', FAUCET_PORT)

@@ -2,7 +2,6 @@ import { dbHistory, getConnection, log, saveOnly, senderAddresses, sendersIgnore
 import { isFn, isObj } from './utils/utils'
 import { TYPES, validateObj } from './utils/validator'
 
-const reprocessRewards = (process.env.ReprocessRewards || '').toLowerCase() === 'yes'
 // reward amounts for each valid reward
 const rewardAmounts = {
     'referral-reward': process.env.referralRewardAmount,
@@ -66,7 +65,7 @@ export const handleRewardPayment = async (decryptedData, callback) => {
     log('Request count:', --requestCount)
 }
 
-reprocessRewards && setTimeout(async () => {
+export const reprocessRewards = async () => {
     await getConnection()
     let done = false
     let count = 0
@@ -110,4 +109,4 @@ reprocessRewards && setTimeout(async () => {
         success,
         fail: count - success,
     })
-}, 2000)
+}
