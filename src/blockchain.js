@@ -8,7 +8,6 @@ import DataStorage from './utils/DataStorage'
 import { generateHash, isFn, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
 import { subjectAsPromise } from './utils/reactHelper'
-import { ss58Decode, ss58Encode } from './utils/convert'
 
 // Environment variables
 const dbHistory = new CouchDBStorage(null, 'faucet_history')
@@ -28,6 +27,7 @@ let api, currentBlock, provider, readyPromise, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
 const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'yes'
+const saveOnly = (process.env.SAVE_ONLY || '').toLowerCase() === 'yes'
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
