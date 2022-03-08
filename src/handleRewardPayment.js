@@ -76,7 +76,7 @@ export const reprocessRewards = async () => {
     do {
         const result = await dbHistory.search(
             { status: 'todo' },
-            1,
+            limit,
             0,
             false,
             { sort: ['tsCreated'] },
