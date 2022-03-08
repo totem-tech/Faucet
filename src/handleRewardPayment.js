@@ -66,7 +66,7 @@ export const handleRewardPayment = async (decryptedData, callback) => {
     log('Request count:', --requestCount)
 }
 
-reprocessRewards && !saveOnly && setTimeout(async () => {
+reprocessRewards && setTimeout(async () => {
     await getConnection()
     let done = false
     let count = 0
