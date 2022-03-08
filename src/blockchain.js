@@ -296,12 +296,16 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
                     : (senderFails[senderIndex] || 0) + 1
                 senderFails[senderIndex] = count
                 if (count >= maxFailCount) log('Sender failed too many subsequent transactions', senderAddress, count)
-                return Promise.reject(err)
+                return []
             })
         // reset fail count
-        senderFails[senderIndex] = 0
         doc.txHash = txHash
-        doc.status = !!txHash ? 'success' : 'error'
+        doc.status = !!txHash
+            ? 'success'
+            : 'error'
+        senderFails[senderIndex] = doc.status !== 'success'
+            ? senderFails[senderIndex]
+            : 0
         await dbHistory.set(rewardId, doc)
     }
 
