@@ -22,12 +22,12 @@ let connectionPromise = null
 const senderAddresses = []
 const senderBalances = []
 const senderFails = []
-let senderInUse
-let readyPromise, currentBlock
-let api, provider, txFee
+const senderNonce = []
+let senderInUse = []
+let api, currentBlock, provider, readyPromise, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
 const maxFailCount = parseInt(process.env.MaxFailCount) || 3
-const senderNonce = []
+const silectExecution = (process.env.SILENT_EXECUTION || '').toLowerCase() === 'YES'
 
 export const log = (...args) => console.log(new Date().toISOString(), ...args)
 
@@ -306,12 +306,12 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     }
 
     // execute the transaction
-    const sendPromise = execute()
-    await sendPromise
-        .finally(() =>
-            // wait 1 second before releasing the address
-            setTimeout(() => addressRelease(senderIndex), 1000)
-        )
+    const executePromise = execute()
+    // wait 1 second before releasing the address
+    executePromise.finally(() => addressRelease(senderIndex), 1000)
+
+    // if silent mode is enabled, immediately return so that messaging server does not wait for a response
+    if (!silectExecution) await executePromise
     return doc
 }
 
