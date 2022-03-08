@@ -251,7 +251,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
                 doc.status = 'todo'
                 await dbHistory.set(rewardId, doc)
                 log(rewardId, 'Re-attempted to quickly', { blockStarted, currentBlock })
-                return
+                return doc
             } else {
                 txStatus = 'failed'
             }
