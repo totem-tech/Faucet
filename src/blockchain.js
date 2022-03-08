@@ -271,11 +271,12 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
     doc.txId = randomHex(recipient, 'blake2', 256)
 
     // seta new temporary status so that these can be searched and executed later
-    doc.status = silectExecution
+    doc.status = saveOnly || silectExecution
         ? 'todo'
         : 'pending'
     // save record with pending status
     await dbHistory.set(rewardId, doc)
+    if (saveOnly) return doc
 
     log(rewardId, 'Awaiting sender allocation')
     const senderAddress = await getSender(amount)
@@ -313,7 +314,7 @@ export const transfer = async (recipient, amount, rewardId, rewardType, limitPer
 
     // execute the transaction
     const executePromise = execute()
-    // wait 1 second before releasing the address
+    // wait 1 second after execution before releasing the address
     executePromise.finally(() => addressRelease(senderIndex), 1000)
 
     // if silent mode is enabled, immediately return so that messaging server does not wait for a response
