@@ -65,49 +65,46 @@ export const handleRewardPayment = async (decryptedData, callback) => {
     log('Request count:', --requestCount)
 }
 
+let limit = 0
+let count = 0
+let success = 0
 export const reprocessRewards = async () => {
     await getConnection()
-    let done = false
-    let count = 0
-    let success = 0
-    const limit = senderAddresses.filter(x => !sendersIgnored.get(x)).length
+    limit = senderAddresses.filter(x => !sendersIgnored.get(x)).length
     log('Reprocessing limit per query: ', limit)
     if (!limit) return
-    do {
-        const result = await dbHistory.search(
-            { status: 'todo' },
-            limit,
-            0,
-            false,
-            { sort: ['tsCreated'] },
-        )
-        if (!result.length || !isObj(result[0])) {
-            done = true
-        }
-        await Promise.all(result.map(entry => {
+
+    const result = await dbHistory.search(
+        { status: 'todo' },
+        limit,
+        0,
+        false,
+        { sort: ['tsCreated'] },
+    )
+    await Promise.all(result.map(async (entry, index) => {
+        try {
             count++
+            log(rewardId, 'Reprocessing', { count, index, address, amount, rewardType })
             const {
                 _id: rewardId,
                 amount,
                 recipient: address,
                 type: rewardType,
             } = entry
-            log(rewardId, 'Reprocessing', { count, address, amount, rewardType })
-            return transfer(
+            const { status, txId, txHash } = await transfer(
                 address,
                 amount,
                 rewardId,
                 rewardType,
                 true,
             )
-                .then(({ status, txId, txHash }) => {
-                    log(rewardId, { count, status, txId, txHash })
-                    if (status === 'success' && txHash) success++
-                })
-                .catch(console.error)
-        }))
-            .catch(console.error)
-    } while (!done)
+            log(rewardId, { count, status, txId, txHash })
+            if (status === 'success' && txHash) success++
+        } catch (error) {
+            console.log(rewardId, { count, error })
+        }
+    })).catch(console.error)
+    if (result.length >= limit) return reprocessRewards()
     log('Reprocessing finished: ', {
         count,
         success,
