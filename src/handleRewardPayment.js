@@ -37,6 +37,7 @@ const validationConf = {
 
 export const handleRewardPayment = async (decryptedData, callback) => {
     if (!isFn(callback)) return
+
     let id
     try {
         const data = JSON.parse(decryptedData)

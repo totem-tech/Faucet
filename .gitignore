@@ -7,5 +7,6 @@ sslcert/fullchain.pem
 sslcert/how-to.md
 sslcert/privkey.pem
 log
-.log
+# log files
+*.log
 data

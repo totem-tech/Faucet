@@ -1,4 +1,5 @@
-import { getConnection, setupKeyring } from './blockchain'
+import { getConnection, setupKeyring, transfer } from './blockchain'
+import { strToHex } from './utils/convert'
 import {
     decrypt,
     encryptionKeypair,
@@ -7,10 +8,10 @@ import {
     verifySignature,
     keyInfoFromKeyData,
 } from './utils/naclHelper'
-import { arrUnique } from './utils/utils'
+import { arrUnique, generateHash, isFn } from './utils/utils'
 
-let keyData,
-    wallet,
+let amount,
+    keyData,
     serverName,
     external_publicKey,
     external_signPublicKey,
@@ -20,6 +21,8 @@ let keyData,
 const printSensitiveData = process.env.printSensitiveData === "YES"
 // Reads environment variables and generate keys if needed
 export const setupVariables = (nodeUrl) => {
+    amount = eval(process.env.amount) || 100000
+
     serverName = process.env.serverName
     if (!serverName) return 'Missing environment variable: "serverName"'
 
@@ -30,26 +33,22 @@ export const setupVariables = (nodeUrl) => {
         return 'Missing environment variable(s): "external_publicKey", "external_signPublicKey" or "external_serverName"'
     }
 
-    // Key data must be 96 bytes hex
-    if (!process.env.keyData) return 'Missing environment variable: "keyData"'
-
-    // Prevent generating keys when not needed
-    if (keyData === process.env.keyData) return
-
+    if (!process.env.seeds) return 'Missing environment variable: "seeds"'
     // Key pairs of this server
-    let wallets = arrUnique(process.env.keyData.split(','))
-        .map(x => x.trim())
+    const seeds = arrUnique(`${process.env.seeds || ''}`.split(','))
         .filter(Boolean)
-    keyData = wallets[0]
-    wallets = wallets.map(w => keyInfoFromKeyData(w))
-    wallet = wallets[0]//keyInfoFromKeyData(keyData)
-    encryption_keypair = encryptionKeypair(keyData)
-    signature_keypair = signingKeyPair(keyData)
+    if (!seeds.length) throw new Error('Missing variable "seeds"')
 
+    if (!process.env.keyData) return 'Missing environment variable: "keyData"'
+    // setup was done before
+    if (process.env.keyData === keyData) return
+    keyData = process.env.keyData
+
+    signature_keypair = signingKeyPair(keyData)
+    encryption_keypair = encryptionKeypair(keyData)
     if (printSensitiveData) {
         console.log('serverName: ', serverName, '\n')
         console.log('keyData: ', keyData, '\n')
-        console.log('wallet.address: ', wallet.address, '\n')
         console.log('Encryption KeyPair base64 encoded: \n' + JSON.stringify(encryption_keypair, null, 4), '\n')
         console.log('Signature KeyPair base64 encoded: \n' + JSON.stringify(signature_keypair, null, 4), '\n')
         console.log('external_serverName: ', external_serverName)
@@ -58,7 +57,7 @@ export const setupVariables = (nodeUrl) => {
     if (nodeUrl) return getConnection(nodeUrl)
         .then(() => {
             console.log('Setting up keyring')
-            return setupKeyring(wallets)
+            return setupKeyring(seeds)
         })
         .catch((err) => {
             console.error('Blockchain connection failed! Error:\n', err)
@@ -124,41 +123,53 @@ export const decryptMessage = async (encryptedMsg, nonce) => {
     return [null, decryptedMsg]
 }
 
-export const handleFaucetTransfer = (encryptedMsg, nonce, callback) => {
-    // console.log('\n\n---New faucet request received---')
-    // if (typeof callback !== 'function') return;
-    // if (!api || !api.rpc) return callback('Not connected to node')
-    // const err = setupVariables()
-    // if (err) return callback(err) | console.error(err);
-    // const decrypted = decrypt(
-    //     encryptedMsg,
-    //     nonce,
-    //     external_publicKey,
-    //     encryption_keypair.secretKey
-    // )
-    // printSensitiveData && console.log('\ndecrypted', decrypted)
-    // if (!decrypted) return callback('Decryption failed')
+export const handleFaucetTransfer = async (encryptedMsg, nonce, callback) => {
+    try {
+        console.log('\n\n---New faucet request received---')
+        if (!isFn(callback)) return
 
-    // const minLength = 9
-    // const decryptedArr = decrypted.split('')
-    // const dataStart = minLength + serverName.length
-    // const sigStart = dataStart + parseInt(decryptedArr.slice(0, minLength).join(''))
-    // const msgServerName = decryptedArr.slice(minLength, dataStart).join('')
-    // if (serverName !== msgServerName) return callback('Invalid data', msgServerName, serverName)
-    // const signature = decryptedArr.slice(sigStart).join('')
-    // printSensitiveData && console.log('\nSignature:\n', signature)
-    // printSensitiveData && console.log('\nexternal_signPublicKey:\n', external_signPublicKey)
-    // const data = decryptedArr.slice(dataStart, sigStart).join('')
-    // printSensitiveData && console.log('\nData:\n', data)
+        const err = setupVariables()
+        if (err) return callback(err) | console.error(err);
+        const decrypted = decrypt(
+            encryptedMsg,
+            nonce,
+            external_publicKey,
+            encryption_keypair.secretKey
+        )
+        printSensitiveData && console.log('\ndecrypted', decrypted)
+        if (!decrypted) return callback('Decryption failed')
 
-    // if (!verifySignature(data, signature, external_signPublicKey)) throw callback('Signature verification failed')
+        const minLength = 9
+        const decryptedArr = decrypted.split('')
+        const dataStart = minLength + serverName.length
+        const sigStart = dataStart + parseInt(decryptedArr.slice(0, minLength).join(''))
+        const msgServerName = decryptedArr.slice(minLength, dataStart).join('')
+        if (serverName !== msgServerName) return callback('Invalid data', msgServerName, serverName)
+        const signature = decryptedArr.slice(sigStart).join('')
+        printSensitiveData && console.log('\nSignature:\n', signature)
+        printSensitiveData && console.log('\nexternal_signPublicKey:\n', external_signPublicKey)
+        const data = decryptedArr.slice(dataStart, sigStart).join('')
+        printSensitiveData && console.log('\nData:\n', data)
 
-    // const { address: recipientAddress, funded } = JSON.parse(data)
-    // if (funded) return callback('Request already funded')
-    // if (!recipientAddress) return callback('Invalid address')
+        if (!verifySignature(data, signature, external_signPublicKey)) throw callback('Signature verification failed')
 
-    // console.log('Faucet request:', JSON.stringify({ address: recipientAddress, amount }))
-    // transfer(recipientAddress, amount, wallet.secretKey, wallet.publicKey, api)
-    //     .then(hash => callback(null, hash))
-    //     .catch(err => console.error('handleTx error: ', err) | callback(err))
+        const { address: recipientAddress, funded } = JSON.parse(data)
+        if (funded) return callback('Request already funded')
+        if (!recipientAddress) return callback('Invalid address')
+
+        console.log('Faucet request:', JSON.stringify({ address: recipientAddress, amount }))
+        const id = generateHash()
+        const doc = await transfer(
+            recipientAddress,
+            amount,
+            id,
+            'faucet-request',
+            true,
+            id
+        )
+        callback(null, doc)
+    } catch (err) {
+        console.log('handleFaucetTransfer error: ', err)
+        callback(`${err}`)
+    }
 }

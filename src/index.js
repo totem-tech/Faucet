@@ -1,7 +1,7 @@
 import https from 'https'
 import fs from 'fs'
 import socket from 'socket.io'
-import { decryptMessage, setupVariables } from './decryptMessage'
+import { decryptMessage, handleFaucetTransfer, setupVariables } from './decryptMessage'
 import { getConnection as setDbConnection } from './utils/CouchDBStorage'
 import { isFn } from './utils/utils'
 import { handleRewardPayment, reprocessRewards } from './handleRewardPayment'
@@ -68,7 +68,8 @@ io.on('connection', client => {
     })
 
     // Keep legacy faucet requsts active until production messaging serivce is updated to latest 
-    client.on('faucet', (_1, _2, cb) => isFn(cb) && cb('Deprecated'))
+    // client.on('faucet', (_1, _2, cb) => isFn(cb) && cb('Deprecated'))
+    client.on('faucet', handleFaucetTransfer)
 
     Object.keys(handlers)
         .forEach(eventName =>

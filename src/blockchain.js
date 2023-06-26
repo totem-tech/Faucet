@@ -7,7 +7,8 @@ import CouchDBStorage from './utils/CouchDBStorage'
 import DataStorage from './utils/DataStorage'
 import { generateHash, isFn, isValidNumber } from './utils/utils'
 import PromisE from './utils/PromisE'
-import { subjectAsPromise } from './utils/reactHelper'
+import { subjectAsPromise } from './utils/rx'
+import { bytesToHex } from './utils/convert'
 
 // Environment variables
 export const dbHistory = new CouchDBStorage(null, 'faucet_history')
@@ -21,7 +22,8 @@ let connectionPromise = null
 export const senderAddresses = []
 const senderBalances = []
 const senderFails = []
-const senderNonce = []
+const senderNonce = {}
+const senderPairs = {}
 let senderInUse = []
 let api, currentBlock, provider, readyPromise, txFee
 const maxTxPerAddress = parseInt(process.env.MaxTxPerAddress) || 1
@@ -50,7 +52,7 @@ const addressAwaitRelease = async () => {
         subjectAsPromise(
             subject,
             // resolves when address becomes available
-            numTx => numTx < maxTxPerAddress && numTx,
+            numTx => !numTx || numTx < maxTxPerAddress,
         )
     )
     // wait for any address to become available
@@ -182,7 +184,7 @@ const getSender = async (amountToSend) => {
             x !== null
             && senderBalances[x] > amountRequired
         )
-    const index = availableIndexes[randomIndex(availableIndexes.length)]
+    const index = availableIndexes[randomIndex(availableIndexes.length - 1)]
     let address = senderAddresses[index]
     if (!address) return await getSender(amountToSend)
     addressLock(index)
@@ -202,10 +204,10 @@ export const randomHex = address => generateHash(`${address}${uuid.v1()}`)
 
 const randomIndex = max => parseInt(Math.random(max) * max)
 
-export const transfer = async (recipient, amount, rewardId, rewardType, doExecuteTx = false) => {
+export const transfer = async (recipient, amount, rewardId, rewardType, doExecuteTx = false, txId) => {
     // connect to blockchain
     const { api } = await getConnection()
-    const doc = await dbHistory.get(rewardId) || {
+    const doc = rewardId && await dbHistory.get(rewardId) || {
         amount,
         recipient,
         status: 'pending',
@@ -267,8 +269,8 @@ export const transfer = async (recipient, amount, rewardId, rewardType, doExecut
         //continue to re-execute the transaction
     }
 
-    // construct a transaction
-    doc.txId = randomHex(recipient, 'blake2', 256)
+    // new transaction ID
+    doc.txId = txId || randomHex(recipient, 'blake2', 256)
 
     // seta new temporary status so that these can be searched and executed later
     doc.status = saveOnly || silectExecution
@@ -291,16 +293,26 @@ export const transfer = async (recipient, amount, rewardId, rewardType, doExecut
     })
     const execute = async () => {
         // execute the treansaction
-        const tx = await api.tx.transfer.networkCurrency(recipient, amount, doc.txId)
-        const [txHash] = await signAndSend(api, senderAddress, tx, nonce, null, senderAddress)
-            .catch(err => {
-                const count = `${err}`.includes('Priority')
-                    ? maxFailCount
-                    : (senderFails[senderIndex] || 0) + 1
-                senderFails[senderIndex] = count
-                if (count >= maxFailCount) log('Sender failed too many subsequent transactions', senderAddress, count)
-                return []
-            })
+        const tx = await api.tx.transfer.networkCurrency(
+            recipient,
+            amount,
+            doc.txId
+        )
+        const [txHash] = await signAndSend(
+            api,
+            senderAddress,
+            tx,
+            nonce,
+            null,
+            senderAddress
+        ).catch(err => {
+            const count = `${err}`.includes('Priority')
+                ? maxFailCount
+                : (senderFails[senderIndex] || 0) + 1
+            senderFails[senderIndex] = count
+            if (count >= maxFailCount) log('Sender failed too many subsequent transactions', senderAddress, count)
+            return []
+        })
         // reset fail count
         doc.txHash = txHash
         doc.status = !!txHash
@@ -333,14 +345,15 @@ export const transfer = async (recipient, amount, rewardId, rewardType, doExecut
  * 
  * @returns {Boolean}
  */
-export const setupKeyring = async (wallets = []) => {
+export const setupKeyring = async (seeds = []) => {
     if (setupKeyring.done) return
     setupKeyring.done = true
     let ready = {}
+    let pairs = seeds.map(seed => keyring.keyring.addFromUri(seed))
     if (sendersIgnored.size > 0) {
-        wallets = wallets.filter(w => !sendersIgnored.get(w.address))
+        pairs = pairs.filter(p => !sendersIgnored.get(p.address))
     }
-    const total = wallets.length
+    const total = pairs.length
     senderInUse = new Array(total)
         .fill(0)
         .map(() => new BehaviorSubject(0))
@@ -359,21 +372,35 @@ export const setupKeyring = async (wallets = []) => {
 
     getCurrentBlock(num => currentBlock = num)
 
-    console.log({ total })
-    for (let i = 0; i < total; i++) {
-        const wallet = wallets[i]
-        await keyring.add([wallet])
+    console.log('Total sender addresses:', total)
 
-        const { address } = wallet
-        /// already added
-        if (senderAddresses.includes(address)) continue
-
+    // fetch nonces
+    const addresses = pairs.map(x => x.address)
+    const nonces = await query(
+        api,
+        api.query.system.accountNonce.multi,
+        [addresses],
+    )
+    nonces.forEach((nonce, i) => {
+        const address = addresses[i]
+        senderNonce[address] = nonce || 0
         ready[address] = {
             balance: false,
-            nonce: false,
+            nonce: true,
         }
-        const index = senderAddresses.push(address) - 1
+    })
 
+    // subscribe & fetch balances
+    for (let i = 0;i < total;i++) {
+        const pair = pairs[i]
+        if (!pair) throw new Error('Failed to add pair', pair)
+
+        const { address } = pair
+        senderPairs[address] = pair
+        // already added
+        if (senderAddresses.includes(address)) continue
+
+        const index = senderAddresses.push(address) - 1
         // subscribe to keep track of address balances
         await query(
             api,
@@ -387,27 +414,37 @@ export const setupKeyring = async (wallets = []) => {
                     !changed && log(`Wallet balance ready ${i + 1}/${total} ${address}`, balance)
                 },
             ])
-        const nonce = await query(
-            api,
-            api.query.system.accountNonce,
-            [address],
-        )
-
-        senderNonce[index] = nonce || 0
-        ready[address].nonce = true
-        log(`Wallet nonce ready ${i + 1}/${total} ${address}`, nonce)
     }
 
-    // Test address release and locking mechanism
+    // Test address release and locking mechanism as well as test transaction
     // readyPromise.then(() => {
-    //     new Array(50)
-    //         .fill(0)
-    //         .forEach(async (_, i) => {
-    //             const sender = await getSender(10000)
-    //             const index = senderAddresses.indexOf(sender)
-    //             setTimeout(() => addressRelease(index), randomIndex(60000))
-    //             console.log(i, senderBalances[index], sender)
-    //         })
+    //     setTimeout(() => {
+    //         new Array(1)
+    //             .fill(0)
+    //             .forEach(async (_, i) => {
+    //                 const { api } = await getConnection()
+    //                 const amount = 10
+    //                 const sender = await getSender(amount)
+    //                 const index = senderAddresses.indexOf(sender)
+    //                 const alice = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY'
+    //                 const txId = generateHash()
+    //                 const pair = senderPairs[sender]
+    //                 const tx = await api.tx.transfer.networkCurrency(
+    //                     alice,
+    //                     amount,
+    //                     txId
+    //                 )
+    //                 await signAndSend(
+    //                     api,
+    //                     sender,
+    //                     tx,
+    //                 )
+    //                 setTimeout(() => {
+    //                     console.log('Releasing sender', sender)
+    //                     addressRelease(index)
+    //                 }, randomIndex(6000))
+    //             })
+    //     }, 2000)
     // })
     return await readyPromise
 }
