@@ -168,13 +168,16 @@ const getSender = async (amountToSend) => {
     // none of the addresses has enough funds
     if (!gotBalance) throw new Error('Faucet server: insufficient funds')
 
-    const allBanned = senderFails.filter(c => c >= maxFailCount).length === senderAddresses.length
+    const numBanned = senderFails
+        .filter(c => maxFailCount && c >= maxFailCount)
+        .length
+    const allBanned = numBanned === senderAddresses.length
     if (allBanned) throw new Error('Faucet server: no useable sender addresses available')
 
     await addressAwaitRelease()
     const availableIndexes = senderInUse
         .map((subject, i) =>
-            senderFails[i] >= maxFailCount // prevent using an address if it failed 3 transactions
+            maxFailCount && senderFails[i] >= maxFailCount // prevent using an address if it failed 3 transactions
                 ? null
                 : subject.value < maxTxPerAddress
                     ? i
@@ -190,7 +193,6 @@ const getSender = async (amountToSend) => {
     addressLock(index)
     return address
 }
-
 
 /**
  * @name randomHex
