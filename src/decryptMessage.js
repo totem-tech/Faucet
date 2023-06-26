@@ -42,7 +42,7 @@ export const setupVariables = (nodeUrl) => {
     if (!process.env.keyData) return 'Missing environment variable: "keyData"'
     // setup was done before
     if (process.env.keyData === keyData) return
-    keyData = process.env.keyData
+    keyData = process.env.keyData.split(',')[0]
 
     signature_keypair = signingKeyPair(keyData)
     encryption_keypair = encryptionKeypair(keyData)
