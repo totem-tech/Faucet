@@ -6,22 +6,6 @@
   "scripts": {
     "faucet": "nodemon --watch ./src/  --verbose --exec ./node_modules/.bin/babel-node ./src/index.js --ext js --presets env"
   },
-  "babel": {
-    "plugins": [
-      "babel-plugin-transform-class-properties",
-      "babel-plugin-transform-object-rest-spread"
-    ],
-    "presets": [
-      [
-        "env",
-        {
-          "targets": {
-            "node": "current"
-          }
-        }
-      ]
-    ]
-  },
   "keywords": [
     "totem",
     "faucet",
