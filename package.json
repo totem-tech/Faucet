@@ -6,6 +6,22 @@
   "scripts": {
     "faucet": "nodemon --watch ./src/  --verbose --exec ./node_modules/.bin/babel-node ./src/index.js --ext js --presets env"
   },
+  "babel": {
+    "plugins": [
+      "babel-plugin-transform-class-properties",
+      "babel-plugin-transform-object-rest-spread"
+    ],
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
+  },
   "keywords": [
     "totem",
     "faucet",
@@ -24,6 +40,7 @@
     "webpack-cli": "^3.1.1"
   },
   "dependencies": {
+    "@babel/preset-env": "^7.22.5",
     "@polkadot/api": "^0.100.1",
     "@polkadot/keyring": "^1.8.1",
     "@polkadot/wasm-crypto": "^0.14.1",
