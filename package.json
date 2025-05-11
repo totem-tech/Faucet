@@ -40,9 +40,9 @@
     "webpack-cli": "^3.1.1"
   },
   "dependencies": {
-    "@babel/preset-env": "^7.22.5",
-    "@polkadot/api": "^0.100.1",
-    "@polkadot/keyring": "^1.8.1",
+    "@babel/preset-env": "^7.27.1",
+    "@polkadot/api": "^10.0.1",
+    "@polkadot/keyring": "^11.0.1",
     "@polkadot/wasm-crypto": "^0.14.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
