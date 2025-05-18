@@ -41,8 +41,8 @@
   },
   "dependencies": {
     "@babel/preset-env": "^7.22.5",
-    "@polkadot/api": "^0.100.1",
-    "@polkadot/keyring": "^1.8.1",
+    "@polkadot/api": "^6.9.1",
+    "@polkadot/keyring": "^7.9.1",
     "@polkadot/wasm-crypto": "^0.14.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
